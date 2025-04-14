@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "ES2020",
+		"module": "ESNext",
+		"declaration": true,
+		"outDir": "dist",
+		"moduleResolution": "Node",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"strict": true,
+		"baseUrl": "./src",
+		"paths": {
+			"@core/*": ["core/*"],
+			"@utils/*": ["utils/*"],
+			"@instances/*": ["instances/*"]
+		}
+	},
+	"include": ["src", "tests"]
+}
