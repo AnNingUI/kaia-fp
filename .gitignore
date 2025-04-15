@@ -16,3 +16,4 @@ pyapp/spec/*
 *.njsproj
 *.sln
 *.sw?
+toMe.txt

@@ -11,7 +11,7 @@ export default defineConfig({
 			fileName: (format) => `kaia-fp.${format}.js`,
 		},
 		rollupOptions: {
-			external: [], // 需要外部化的依赖
+			external: (id) => !id.startsWith(".") && !path.isAbsolute(id),
 			output: {
 				globals: {}, // 全局变量名称映射
 			},
@@ -29,9 +29,9 @@ export default defineConfig({
 			],
 		}),
 		typescript({
-			tsconfig: "./tsconfig.json",
+			tsconfig: "./tsconfig.build.json",
 			declaration: true,
-			declarationDir: "dist/types",
+			declarationDir: path.resolve(__dirname, "dist/types"),
 		}),
 	],
 });
