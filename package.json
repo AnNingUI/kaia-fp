@@ -1,6 +1,6 @@
 {
 	"name": "kaia-fp",
-	"version": "1.0.1",
+	"version": "1.0.0",
 	"main": "./dist/kaia-fp.umd.js",
 	"module": "./dist/kaia-fp.es.js",
 	"types": "./dist/types/index.d.ts",
