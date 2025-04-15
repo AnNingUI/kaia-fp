@@ -1,5 +1,5 @@
-import { Either, Left, Right } from "@utils/either";
-import { is } from "@utils/match";
+import { Either, Left, Right } from "../either";
+import { is } from "../match/is";
 
 export type Result<T, E> =
 	| {

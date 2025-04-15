@@ -1,5 +1,5 @@
-import { HKT } from "@core/hkt";
-import { makeMonad } from "@core/utils";
+import { HKT } from "../core/hkt";
+import { makeMonad } from "../core/utils";
 
 export class Reader<R, A> implements HKT<"Reader", A> {
 	readonly _URI!: "Reader";

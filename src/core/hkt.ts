@@ -6,7 +6,7 @@ import type {
 	State,
 	Task,
 	Writer,
-} from "@instances/index";
+} from "../instances/index";
 
 export interface HKT<F, A> {
 	readonly _URI: F;

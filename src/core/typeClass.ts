@@ -1,4 +1,4 @@
-import type { Kind, URItoKind } from "@core/index";
+import type { Kind, URItoKind } from "../core/index";
 
 export interface Functor<F extends keyof URItoKind<any>> {
 	map<A, B>(fa: Kind<F, A>, f: (a: A) => B): Kind<F, B>;

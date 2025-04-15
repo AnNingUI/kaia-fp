@@ -2,6 +2,9 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"noEmit": false,
+		"skipLibCheck": true,
+		"esModuleInterop": true,
+		"strict": true,
 		"declaration": true,
 		"emitDeclarationOnly": true,
 		"outDir": "dist/types"

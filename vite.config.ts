@@ -20,16 +20,22 @@ export default defineConfig({
 	plugins: [
 		alias({
 			entries: [
-				{ find: "@core", replacement: path.resolve(__dirname, "src/core") },
-				{ find: "@utils", replacement: path.resolve(__dirname, "src/utils") },
 				{
-					find: "@instances",
+					find: "kaia-fs/core",
+					replacement: path.resolve(__dirname, "src/core"),
+				},
+				{
+					find: "kaia-fs/utils",
+					replacement: path.resolve(__dirname, "src/utils"),
+				},
+				{
+					find: "kaia-fs/instances",
 					replacement: path.resolve(__dirname, "src/instances"),
 				},
 			],
 		}),
 		typescript({
-			tsconfig: "./tsconfig.build.json",
+			tsconfig: path.resolve(__dirname, "./tsconfig.build.json"),
 			declaration: true,
 			declarationDir: path.resolve(__dirname, "dist/types"),
 		}),

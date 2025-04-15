@@ -1,4 +1,4 @@
-import { Either, Left, Right } from "@utils/either";
+import { Either, Left, Right } from "../either";
 
 export type Predicate<T> = (val: any) => val is T;
 
@@ -6,11 +6,16 @@ function not<T>(pred: Predicate<T>): Predicate<unknown> {
 	return (val): val is unknown => !pred(val);
 }
 
-function wrap<T>(predicate: Predicate<T>) {
+interface Wrap<T> {
+	match: Predicate<T>;
+	or<U>(alt: Predicate<U>): Wrap<T | U>;
+}
+
+function wrap<T>(predicate: Predicate<T>): Wrap<T> {
 	return {
 		match: predicate,
 		or: <U>(alt: Predicate<U>) =>
-			wrap((val): val is T | U => predicate(val) || alt(val)),
+			wrap<T | U>((val): val is T | U => predicate(val) || alt(val)),
 	};
 }
 
@@ -33,8 +38,16 @@ function compose<T>(preds: ((val: any) => boolean)[]): Predicate<T> {
 	return (val): val is T => preds.every((p) => p(val));
 }
 
-const isNumber = () => {
+type IsNumberSelf = {
+	toBool(to: (n: number) => boolean): IsNumberSelf;
+	gt(n: number): IsNumberSelf;
+	lt(n: number): IsNumberSelf;
+	eq(n: number): IsNumberSelf;
+	match: Predicate<number>;
+};
+const isNumber = (): IsNumberSelf => {
 	const preds: ((v: any) => boolean)[] = [(v) => typeof v === "number"];
+
 	const self = {
 		toBool(to: (n: number) => boolean) {
 			preds.push((v) => to(v));
@@ -56,7 +69,15 @@ const isNumber = () => {
 	};
 	return self;
 };
-const isString = () => {
+
+type IsStringSelf = {
+	toBool(to: (n: string) => boolean): IsStringSelf;
+	test(r: RegExp): IsStringSelf;
+	includes(substr: string): IsStringSelf;
+	match: Predicate<string>;
+};
+
+const isString = (): IsStringSelf => {
 	const preds: ((v: any) => boolean)[] = [(v) => typeof v === "string"];
 	const self = {
 		toBool(to: (n: string) => boolean) {
@@ -127,9 +148,14 @@ const isUnion = <U extends Predicate<any>[]>(...variants: [...U]) => {
 	return (val: any): val is U[number] extends Predicate<infer T> ? T : never =>
 		variants.some((fn) => fn(val));
 };
+
+type IsLiteralSelf<T extends string | number | boolean | null | undefined> = {
+	match: Predicate<T>;
+};
+
 const isLiteral = <T extends string | number | boolean | null | undefined>(
 	expected: T
-) => {
+): IsLiteralSelf<T> => {
 	const predicate = (val: any): val is T => val === expected;
 
 	// 直接暴露 predicate 和 match 两种形式

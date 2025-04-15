@@ -1,7 +1,7 @@
 // src/instances/asyncResult.ts
-import { HKT } from "@core/hkt";
-import { makeMonad } from "@core/utils";
-import { Either, Left, Right } from "@utils/either";
+import { HKT } from "../core/hkt";
+import { makeMonad } from "../core/utils";
+import { Either, Left, Right } from "../utils/either";
 
 export class AsyncResult<E, A> implements HKT<"AsyncResult", A> {
 	readonly _URI!: "AsyncResult";

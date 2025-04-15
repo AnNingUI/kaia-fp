@@ -1,4 +1,4 @@
-import { makeMonad } from "@core/utils";
+import { makeMonad } from "../core/utils";
 import { HKT } from "../core/hkt";
 
 export class State<S, A> implements HKT<"State", A> {

@@ -10,9 +10,9 @@
 		"strict": true,
 		"baseUrl": "./src",
 		"paths": {
-			"@core/*": ["core/*"],
-			"@utils/*": ["utils/*"],
-			"@instances/*": ["instances/*"]
+			"kaia-fs/core/*": ["src/core/*"],
+			"kaia-fs/utils/*": ["src/utils/*"],
+			"kaia-fs/instances/*": ["src/instances/*"]
 		}
 	},
 	"include": ["src", "tests"]

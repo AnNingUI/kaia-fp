@@ -1,6 +1,6 @@
-import { HKT } from "@core/hkt";
-import { Monad } from "@core/typeClass";
-import { makeMonad } from "@core/utils";
+import { HKT } from "../core/hkt";
+import { Monad } from "../core/typeClass";
+import { makeMonad } from "../core/utils";
 
 export class Writer<W, A> implements HKT<"Writer", A> {
 	readonly _URI!: "Writer";
