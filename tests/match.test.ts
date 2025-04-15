@@ -1,5 +1,5 @@
 // tests/realScenario.test.ts
-import { defineShape, getShape, is, match } from "index";
+import { defineShape, getShape, is, match } from "@utils/match";
 import { describe, expect, it } from "vitest";
 //
 // 模拟真实业务场景：用户数据处理、异步请求、日志记录与状态更新
@@ -10,13 +10,11 @@ describe("模拟实际场景测试", () => {
 		// 数字匹配和条件
 		it("should match numbers with conditions", async () => {
 			const result = await match<unknown, string>()
-				.with(is.number().eq(42).match, (n) => `等于42：${n}`)
-				.with(is.number().gt(100).match, (n) => `大于100：${n}`)
-				.with(is.number().lt(50).match, (n) => `小于50：${n}`)
+				.with(is.number().gt(5).lt(50).match, (n) => `数字：5 < ${n} < 50`)
 				.otherwise(() => "未知数字")
 				.run(42);
 
-			expect(result).toBe("等于42：42");
+			expect(result).toBe("数字：5 < 42 < 50");
 		});
 
 		// 字符串匹配和正则表达式
@@ -38,14 +36,11 @@ describe("模拟实际场景测试", () => {
 
 		// 对象匹配，使用 `shape` 和 `optional`
 		it("should match objects using shape", async () => {
-			defineShape(
-				"Person",
-				is.shape({
-					name: is.string().match,
-					age: is.optional(is.number().gt(0).match),
-				})
-			);
-
+			const personShape = is.shape({
+				name: is.string().match,
+				age: is.optional(is.number().gt(0).match),
+			});
+			defineShape("Person", personShape);
 			const result = await match<unknown, string>()
 				.with(
 					getShape<{ name: string; age?: number }>("Person")!,

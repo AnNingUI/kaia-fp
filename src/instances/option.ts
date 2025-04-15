@@ -3,8 +3,8 @@ import { Monad } from "../core/typeClass";
 
 // export type Options<A> = Some<A> | A extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B>one;
 type OptionsValue = Some<any> | None;
-export class Options<A> implements HKT<"Option", A> {
-	readonly _URI!: "Option";
+export class Options<A> implements HKT<"Options", A> {
+	readonly _URI!: "Options";
 	readonly _A!: A;
 	readonly _tag?: "Some" | "None";
 
@@ -34,8 +34,8 @@ export class Options<A> implements HKT<"Option", A> {
 	}
 }
 
-export class Some<A> extends Options<A> implements HKT<"Option", A> {
-	readonly _URI!: "Option";
+export class Some<A> extends Options<A> implements HKT<"Options", A> {
+	readonly _URI!: "Options";
 	readonly _A!: A;
 	readonly _tag = "Some";
 
@@ -44,8 +44,8 @@ export class Some<A> extends Options<A> implements HKT<"Option", A> {
 	}
 }
 
-export class None extends Options<never> implements HKT<"Option", never> {
-	readonly _URI!: "Option";
+export class None extends Options<never> implements HKT<"Options", never> {
+	readonly _URI!: "Options";
 	readonly _A!: never;
 	readonly _tag = "None";
 	readonly value = null;
