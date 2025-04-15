@@ -1,9 +1,6 @@
 // tests/realScenario.test.ts
 import { defineShape, getShape, is, match } from "@utils/match";
 import { describe, expect, it } from "vitest";
-//
-// 模拟真实业务场景：用户数据处理、异步请求、日志记录与状态更新
-//
 
 describe("模拟实际场景测试", () => {
 	describe("Match Functionality", () => {

@@ -1,5 +1,6 @@
 import { HKT } from "@core/hkt";
 import { Monad } from "@core/typeClass";
+import { makeMonad } from "@core/utils";
 
 export class Writer<W, A> implements HKT<"Writer", A> {
 	readonly _URI!: "Writer";
@@ -25,7 +26,7 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 	ap<B>(fab: Writer<W, (a: A) => B>): Writer<W, B> {
 		return new Writer(
 			fab.value(this.value),
-			this.monoid.concat(fab.log, this.log),
+			this.monoid.concat(this.log, fab.log), // Correct order
 			this.monoid
 		);
 	}
@@ -47,9 +48,7 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 export const WriterMonad = <W>(monoid: {
 	empty: W;
 	concat: (w1: W, w2: W) => W;
-}): Monad<"Writer"> => ({
-	of: (a) => Writer.of(monoid, a),
-	map: (fa, f) => fa.map(f),
-	ap: (fab, fa) => fa.ap(fab as Writer<W, (a: any) => any>),
-	flatMap: (fa, f) => fa.flatMap(f),
-});
+}): Monad<"Writer"> => {
+	const of = (a: any) => Writer.of(monoid, a);
+	return makeMonad("Writer", Writer, of, (fab, fa) => fa.ap(fab as any));
+};

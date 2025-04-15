@@ -1,8 +1,16 @@
 export type Either<L, R> = Left<L> | Right<R>;
 
-export class Left<L> {
+export class EitherBase {
+	static is(v: any) {
+		return v instanceof Left || v instanceof Right;
+	}
+}
+
+export class Left<L> extends EitherBase {
 	readonly _tag = "Left";
-	constructor(public readonly value: L) {}
+	constructor(public readonly value: L) {
+		super();
+	}
 
 	isLeft(): this is Left<L> {
 		return true;
@@ -13,9 +21,19 @@ export class Left<L> {
 	}
 }
 
-export class Right<R> {
+export class Right<R> extends EitherBase {
 	readonly _tag = "Right";
-	constructor(public readonly value: R) {}
+	constructor(public readonly value: R) {
+		super();
+	}
+
+	public get() {
+		return this.value;
+	}
+
+	public to<B>(t: (v: R) => B | Promise<B> | void | Promise<void>) {
+		return t(this.value);
+	}
 
 	isLeft(): this is Left<never> {
 		return false;

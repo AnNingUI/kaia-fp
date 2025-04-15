@@ -1,6 +1,17 @@
+import { Either, Left, Right } from "@utils/either";
+import { is } from "@utils/match";
+
 export type Result<T, E> =
-	| { success: true; value: T }
-	| { success: false; error: E };
+	| {
+			ok?: null;
+			err: E;
+			success: false;
+	  }
+	| {
+			ok: T;
+			err?: null;
+			success: true;
+	  };
 
 export type AsyncOrSync<T> = T | Promise<T>;
 
@@ -13,6 +24,22 @@ type TryCatchReturn<T extends any[], R, H> = (
 	...args: T
 ) => R extends Promise<infer U> ? Promise<Result<U, H>> : Result<R, H>;
 
+type WithIsEither<Error, T> = Either<Error, T> & {
+	either: typeof is.either<Error, T>;
+};
+export function tryCatchEither<T>(fn: () => T): WithIsEither<Error, T> {
+	try {
+		let result = fn();
+		let r = new Right(result) as WithIsEither<Error, T>;
+		r.either = is.either;
+		return r;
+	} catch (error) {
+		let l = new Left(error as Error) as WithIsEither<Error, T>;
+		l.either = is.either;
+		return l;
+	}
+}
+
 export function tryCatch<T extends any[], R, E, H = E>(
 	fn: (...args: T) => R, // 直接使用 R 携带完整类型
 	options: TryCatchOptions<E, H> = {}
@@ -22,10 +49,10 @@ export function tryCatch<T extends any[], R, E, H = E>(
 			const handled = options.onError?.(error) ?? (error as H);
 			if (options.rethrow)
 				throw handled instanceof Error ? handled : new Error(String(handled));
-			return { success: false, error: handled };
+			return { success: false, err: handled };
 		} catch (rethrown) {
 			if (options.rethrow) throw rethrown;
-			return { success: false, error: rethrown as H };
+			return { success: false, err: rethrown as H };
 		}
 	};
 
@@ -35,12 +62,12 @@ export function tryCatch<T extends any[], R, E, H = E>(
 
 			if (result instanceof Promise) {
 				return result.then(
-					(value) => ({ success: true, value } as Result<R, H>),
+					(value) => ({ success: true, ok: value } as Result<R, H>),
 					(error) => handle(error)
 				) as Promise<Result<R, H>>;
 			}
 
-			return { success: true, value: result } as Result<R, H>;
+			return { success: true, ok: result } as Result<R, H>;
 		} catch (error) {
 			return handle(error) as Result<R, H>;
 		}
@@ -49,23 +76,23 @@ export function tryCatch<T extends any[], R, E, H = E>(
 
 export const Result = {
 	unwrap<T, E>(res: Result<T, E>): T {
-		if (res.success) return res.value;
-		throw res.error;
+		if (res.success) return res.ok;
+		throw res.err;
 	},
 
 	map<T, E, U>(res: Result<T, E>, fn: (val: T) => U): Result<U, E> {
-		return res.success ? { success: true, value: fn(res.value) } : res;
+		return res.success ? { success: true, ok: fn(res.ok) } : res;
 	},
 
 	mapError<T, E, F>(res: Result<T, E>, fn: (err: E) => F): Result<T, F> {
-		return res.success ? res : { success: false, error: fn(res.error) };
+		return res.success ? res : { success: false, err: fn(res.err) };
 	},
 
 	flatMap<T, E, U>(
 		res: Result<T, E>,
 		fn: (val: T) => Result<U, E>
 	): Result<U, E> {
-		return res.success ? fn(res.value) : res;
+		return res.success ? fn(res.ok) : res;
 	},
 
 	async flatMapAsync<T, E, U>(
@@ -73,7 +100,7 @@ export const Result = {
 		fn: (val: T) => Promise<Result<U, E>>
 	): Promise<Result<U, E>> {
 		const resolved = await res;
-		return resolved.success ? fn(resolved.value) : resolved;
+		return resolved.success ? fn(resolved.ok) : resolved;
 	},
 
 	async fromPromise<T, E>(
@@ -81,9 +108,9 @@ export const Result = {
 		onError?: (e: any) => E
 	): Promise<Result<T, E>> {
 		try {
-			return { success: true, value: await p };
+			return { success: true, ok: await p };
 		} catch (e) {
-			return { success: false, error: onError ? onError(e) : (e as E) };
+			return { success: false, err: onError ? onError(e) : (e as E) };
 		}
 	},
 
@@ -92,9 +119,9 @@ export const Result = {
 		for (const p of arr) {
 			const res = await p;
 			if (!res.success) return res;
-			values.push(res.value);
+			values.push(res.ok);
 		}
-		return { success: true, value: values };
+		return { success: true, ok: values };
 	},
 
 	async allSettled<T, E>(
@@ -108,11 +135,11 @@ export const Result = {
 		for (const p of arr) {
 			const res = await p;
 			if (res.success) return res;
-			errors.push(res.error);
+			errors.push(res.err);
 		}
 		return {
 			success: false,
-			error: errors.length === 1 ? errors[0] : (errors as any),
+			err: errors.length === 1 ? errors[0] : (errors as any),
 		};
 	},
 
@@ -126,20 +153,20 @@ export const Result = {
 		for (const key in obj) {
 			const res = obj[key];
 			if (!res.success) return res;
-			out[key] = res.value;
+			out[key] = res.ok;
 		}
-		return { success: true, value: out };
+		return { success: true, ok: out };
 	},
 };
 
 export function isSuccess<T, E>(
 	res: Result<T, E>
-): res is { success: true; value: T } {
+): res is { success: true; ok: T } {
 	return res.success;
 }
 
 export function isFailure<T, E>(
 	res: Result<T, E>
-): res is { success: false; error: E } {
+): res is { success: false; err: E } {
 	return !res.success;
 }

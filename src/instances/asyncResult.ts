@@ -1,6 +1,6 @@
 // src/instances/asyncResult.ts
 import { HKT } from "@core/hkt";
-import { Monad } from "@core/typeClass";
+import { makeMonad } from "@core/utils";
 import { Either, Left, Right } from "@utils/either";
 
 export class AsyncResult<E, A> implements HKT<"AsyncResult", A> {
@@ -37,9 +37,8 @@ export class AsyncResult<E, A> implements HKT<"AsyncResult", A> {
 }
 
 // 修复点3：修正Monad实例类型
-export const AsyncResultMonad: Monad<"AsyncResult"> = {
-	of: <A>(a: A) => AsyncResult.of(a),
-	map: (fa, f) => fa.map(f),
-	ap: (fab, fa) => fab.flatMap((f) => fa.map(f)),
-	flatMap: (fa, f) => fa.flatMap(f),
-};
+export const AsyncResultMonad = makeMonad(
+	"AsyncResult",
+	AsyncResult,
+	AsyncResult.of
+);

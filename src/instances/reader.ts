@@ -1,5 +1,5 @@
 import { HKT } from "@core/hkt";
-import { Monad } from "@core/typeClass";
+import { makeMonad } from "@core/utils";
 
 export class Reader<R, A> implements HKT<"Reader", A> {
 	readonly _URI!: "Reader";
@@ -28,9 +28,6 @@ export class Reader<R, A> implements HKT<"Reader", A> {
 	}
 }
 
-export const ReaderMonad: Monad<"Reader"> = {
-	of: Reader.of,
-	map: (fa, f) => fa.map(f),
-	ap: (fab, fa) => fa.ap(fab as Reader<any, (a: any) => any>),
-	flatMap: (fa, f) => fa.flatMap(f),
-};
+export const ReaderMonad = makeMonad("Reader", Reader, Reader.of, (fab, fa) =>
+	fa.ap(fab as any)
+);

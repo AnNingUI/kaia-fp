@@ -1,5 +1,12 @@
+import { match } from "@utils/match";
 import { describe, expect, it } from "vitest";
-import { Result, isFailure, isSuccess, tryCatch } from "../src/utils/pipe";
+import {
+	Result,
+	isFailure,
+	isSuccess,
+	tryCatch,
+	tryCatchEither,
+} from "../src/utils/pipe";
 
 describe("tryCatch", () => {
 	it("wraps a successful sync function", () => {
@@ -47,7 +54,7 @@ describe("tryCatch", () => {
 		const result = fn();
 		expect(result).toEqual({
 			success: false,
-			error: "handled: err",
+			err: "handled: err",
 		});
 	});
 
@@ -67,41 +74,73 @@ describe("tryCatch", () => {
 
 describe("Result helpers", () => {
 	it("unwrap returns value on success", () => {
-		const result = { success: true, value: 123 } as const;
+		const result = { success: true, ok: 123 } as const;
 		expect(Result.unwrap(result)).toBe(123);
 	});
 
 	it("unwrap throws on failure", () => {
-		const result = { success: false, error: "err" } as const;
+		const result = { success: false, err: "err" } as const;
 		expect(() => Result.unwrap(result)).toThrow("err");
 	});
 
 	it("map transforms success", () => {
-		const result = Result.map({ success: true, value: 2 }, (v) => v + 1);
-		expect(result).toEqual({ success: true, value: 3 });
+		const result = Result.map({ success: true, ok: 2 }, (v) => v + 1);
+		expect(result).toEqual({ success: true, ok: 3 });
 	});
 
 	it("mapError transforms error", () => {
 		const result = Result.mapError(
-			{ success: false, error: "oops" },
+			{ success: false, err: "oops" },
 			(e) => `!${e}`
 		);
-		expect(result).toEqual({ success: false, error: "!oops" });
+		expect(result).toEqual({ success: false, err: "!oops" });
 	});
 
 	it("combine aggregates multiple success", () => {
 		const combined = Result.combine({
-			a: { success: true, value: 1 },
-			b: { success: true, value: 2 },
+			a: { success: true, ok: 1 },
+			b: { success: true, ok: 2 },
 		});
-		expect(combined).toEqual({ success: true, value: { a: 1, b: 2 } });
+		expect(combined).toEqual({ success: true, ok: { a: 1, b: 2 } });
 	});
 
 	it("combine stops on first failure", () => {
 		const combined = Result.combine({
-			a: { success: true, value: 1 },
-			b: { success: false, error: "fail" },
+			a: { success: true, ok: 1 },
+			b: { success: false, err: "fail" },
 		});
-		expect(combined).toEqual({ success: false, error: "fail" });
+		expect(combined).toEqual({ success: false, err: "fail" });
+	});
+
+	it("tryCatchEither Left", () => {
+		const fn = tryCatchEither(() => {
+			throw new Error("fail");
+		});
+		expect(fn.isLeft()).toEqual(true);
+		expect(fn.isRight()).toEqual(false);
+	});
+
+	it("tryCatchEither Right", () => {
+		const fn = tryCatchEither(() => 123);
+		if (fn.isRight()) {
+			fn.to((v) => expect(v).toEqual(123));
+		} else {
+			expect(fn.isLeft()).toEqual(false);
+		}
+	});
+
+	it("tryCatchEither Match", () => {
+		const fn = tryCatchEither(() => 123);
+		const { left, right } = fn.either();
+		const matcher = match()
+			.with(left.match, (err) => {
+				expect(err).toEqual(undefined);
+				expect(fn.isLeft()).toEqual(true);
+			})
+			.with(right.match, (v) => {
+				expect(v.value).toEqual(123);
+				expect(fn.isRight()).toEqual(true);
+			});
+		matcher.run(fn);
 	});
 });

@@ -1,5 +1,5 @@
+import { makeMonad } from "@core/utils";
 import { HKT } from "../core/hkt";
-import { Monad } from "../core/typeClass";
 
 export class State<S, A> implements HKT<"State", A> {
 	readonly _URI!: "State";
@@ -26,9 +26,4 @@ export class State<S, A> implements HKT<"State", A> {
 	}
 }
 
-export const StateMonad: Monad<"State"> = {
-	of: State.of,
-	map: (fa, f) => fa.map(f),
-	ap: (fab, fa) => fab.flatMap((f: any) => fa.map(f)),
-	flatMap: (fa, f) => fa.flatMap(f),
-};
+export const StateMonad = makeMonad("State", State, State.of);

@@ -18,8 +18,8 @@ export class Options<A> implements HKT<"Options", A> {
 		return this.value !== null && this instanceof Some && this._tag === "Some";
 	}
 
-	public orElse<T>(value: T) {
-		return this.value !== null ? this : new Some(value);
+	public orElse<B>(value: B): Options<A | B> {
+		return this.isNone() ? new Some(value) : this;
 	}
 
 	public get() {
@@ -29,8 +29,8 @@ export class Options<A> implements HKT<"Options", A> {
 		return this.value;
 	}
 
-	public getOrElse<T>(value: T) {
-		return this.value !== null ? this.value : value;
+	public getOrElse<B>(defaultValue: B): A | B {
+		return this.isSome() ? (this.value as A) : defaultValue;
 	}
 }
 
