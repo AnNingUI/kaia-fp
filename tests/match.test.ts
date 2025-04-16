@@ -1,6 +1,16 @@
 // tests/realScenario.test.ts
-import { defineShape, getShape, is, match } from "@utils/match";
 import { describe, expect, it } from "vitest";
+import { defineShape, getShape, is, match } from "../src/utils/match";
+
+const numListBuilder = (n: number) => {
+	let _list = [];
+	for (let i = 0; i < n; i++) {
+		_list.push(i * 10 * Math.random());
+	}
+	return _list;
+};
+
+const numList = numListBuilder(1000000);
 
 describe("模拟实际场景测试", () => {
 	describe("Match Functionality", () => {
@@ -83,6 +93,35 @@ describe("模拟实际场景测试", () => {
 				.run(150);
 
 			expect(result).toBe("大于100：150");
+		});
+	});
+
+	describe("Performance Test", () => {
+		// 130ms
+		it("1000000随机大数据匹配判断性能测试", async () => {
+			// Create the matcher manager
+			const manager = match<number, string>();
+
+			// Define the matchers
+			manager
+				.with(is.number().gt(1000).match, (val) => `大于1000：${val}`)
+				.with(is.number().lt(10).match, (val) => `小于10：${val}`)
+				.otherwise(() => "默认数字");
+
+			// Use matchForEach to handle each item lazily
+			const results = await manager.matchForEach(numList);
+
+			// Validate the results
+			results.forEach((result, i) => {
+				const expected =
+					numList[i] > 1000
+						? `大于1000：${numList[i]}`
+						: numList[i] < 10
+						? `小于10：${numList[i]}`
+						: "默认数字";
+
+				expect(result).toBe(expected);
+			});
 		});
 	});
 });

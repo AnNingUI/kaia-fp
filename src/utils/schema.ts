@@ -10,31 +10,40 @@ export type JSONSchema = {
 };
 
 export function schemaFrom<T>(example: T): JSONSchema {
-	if (Array.isArray(example)) {
-		return {
-			type: "array",
-			items: schemaFrom(example[0]),
-		};
-	} else if (typeof example === "object" && example !== null) {
-		const properties: Record<string, JSONSchema> = {};
-		const required: string[] = [];
+	const stack: any[] = [example];
+	const schemas: JSONSchema[] = [];
+	const processed = new WeakMap();
 
-		for (const key in example) {
-			if (example.hasOwnProperty(key)) {
-				const value = (example as any)[key];
-				properties[key] = schemaFrom(value);
-				required.push(key);
-			}
+	while (stack.length > 0) {
+		const current = stack.pop()!;
+
+		if (processed.has(current)) {
+			continue;
 		}
 
-		return {
-			type: "object",
-			properties,
-			required,
-		};
-	} else {
-		return {
-			type: typeof example,
-		};
+		if (Array.isArray(current)) {
+			const schema: JSONSchema = { type: "array" };
+			processed.set(current, schema);
+			if (current.length > 0) {
+				stack.push(current);
+				stack.push(current[0]);
+				schemas.push(schema);
+			}
+		} else if (typeof current === "object" && current !== null) {
+			const schema: JSONSchema = { type: "object", properties: {} };
+			processed.set(current, schema);
+			stack.push(current);
+			schemas.push(schema);
+
+			const entries = Object.entries(current).reverse();
+			for (const [key, value] of entries) {
+				stack.push(value);
+				stack.push(key);
+			}
+		} else {
+			schemas.push({ type: typeof current });
+		}
 	}
+
+	return schemas[0];
 }

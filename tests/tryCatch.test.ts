@@ -1,5 +1,5 @@
-import { match } from "@utils/match";
 import { describe, expect, it } from "vitest";
+import { match } from "../src/utils/match";
 import {
 	Result,
 	isFailure,

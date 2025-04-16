@@ -197,6 +197,19 @@ const isEither = <L, R>() => {
 		),
 	};
 };
+
+const isClazz = <T>(ctor: { new (...args: any[]): T }) => {
+	const u = (val: unknown): val is T => val instanceof ctor;
+	u.match = u;
+	return u;
+};
+
+// boolean 布尔匹配 转 is
+const isTo = <T>(to: (v: T) => boolean) => {
+	const u = (val: unknown): val is T => to(val as T);
+	return u;
+};
+
 export interface IsTypes {
 	number: typeof isNumber;
 	string: typeof isString;
@@ -209,6 +222,8 @@ export interface IsTypes {
 	union: typeof isUnion;
 	literal: typeof isLiteral;
 	either: typeof isEither;
+	clazz: typeof isClazz;
+	to: typeof isTo;
 	not: typeof not;
 	optional: typeof optional;
 }
@@ -224,6 +239,8 @@ export const is: IsTypes = {
 	union: isUnion,
 	literal: isLiteral,
 	either: isEither,
+	clazz: isClazz,
+	to: isTo,
 	not,
 	optional,
 };

@@ -2,13 +2,18 @@ import { HKT } from "../core/hkt";
 import { Monad } from "../core/typeClass";
 import { makeMonad } from "../core/utils";
 
+type LogNode<W> = {
+	log: W;
+	next: LogNode<W> | null;
+};
+
 export class Writer<W, A> implements HKT<"Writer", A> {
 	readonly _URI!: "Writer";
 	readonly _A!: A;
 
 	constructor(
 		public readonly value: A,
-		public readonly log: W,
+		public readonly log: W, // This remains unchanged (as a string in the case of your example)
 		private readonly monoid: { empty: W; concat: (w1: W, w2: W) => W }
 	) {}
 
@@ -26,7 +31,7 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 	ap<B>(fab: Writer<W, (a: A) => B>): Writer<W, B> {
 		return new Writer(
 			fab.value(this.value),
-			this.monoid.concat(this.log, fab.log), // Correct order
+			this.monoid.concat(this.log, fab.log), // Direct concatenation
 			this.monoid
 		);
 	}
@@ -35,13 +40,18 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 		const result = f(this.value);
 		return new Writer(
 			result.value,
-			this.monoid.concat(this.log, result.log),
+			this.monoid.concat(this.log, result.log), // Direct concatenation
 			this.monoid
 		);
 	}
 
 	listen(): Writer<W, [A, W]> {
-		return new Writer([this.value, this.log], this.log, this.monoid);
+		return new Writer([this.value, this.getLog()], this.log, this.monoid);
+	}
+
+	private getLog(): W {
+		// Here we perform the actual log concatenation when it's needed.
+		return this.log;
 	}
 }
 

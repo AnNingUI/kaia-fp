@@ -17,18 +17,11 @@ export function pipe<T>(...funcs: PipeFunction<T>[]): PipeFunction<T> {
 export function pipeAsync<T>(
 	...funcs: PipeAsyncFunction<T>[]
 ): (arg: T) => Promise<T> {
-	if (funcs.length === 0) {
-		return async (arg: T) => arg; // 空管道返回原值
-	}
-
-	return async (initialValue: T) => {
-		let result = initialValue;
+	return async (initial) => {
+		let value = initial;
 		for (const fn of funcs) {
-			// 检查函数是否返回一个 Promise
-			const tempResult = fn(result);
-			// 如果是 Promise，等待其 resolve，否则直接使用结果
-			result = tempResult instanceof Promise ? await tempResult : tempResult;
+			value = await fn(value);
 		}
-		return result;
+		return value;
 	};
 }

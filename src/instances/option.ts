@@ -50,22 +50,33 @@ export class None extends Options<never> implements HKT<"Options", never> {
 	readonly _tag = "None";
 	readonly value = null;
 
-	constructor() {
+	private static INSTANCE: None;
+
+	private constructor() {
 		super(null);
+	}
+
+	public static of(): None {
+		if (!this.INSTANCE) {
+			this.INSTANCE = new None();
+			return this.INSTANCE;
+		} else {
+			return this.INSTANCE as None;
+		}
 	}
 }
 
 export const OptionMonad: {
 	none: () => None;
 } & Monad<"Options"> = {
-	none: () => new None(),
+	none: () => None.of(),
 	of: <A>(a: A): Options<A> => new Some(a),
-	map: (fa, f) => (fa instanceof Some ? new Some(f(fa.value)) : new None()),
+	map: (fa, f) => (fa instanceof Some ? new Some(f(fa.value)) : None.of()),
 	ap: (fab, fa) =>
 		fab instanceof Some && fa instanceof Some
 			? new Some(fab.value(fa.value))
-			: new None(),
-	flatMap: (fa, f) => (fa instanceof Some ? f(fa.value) : new None()),
+			: None.of(),
+	flatMap: (fa, f) => (fa instanceof Some ? f(fa.value) : None.of()),
 };
 
 const isNull = (value: any) => {
