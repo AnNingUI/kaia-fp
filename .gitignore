@@ -17,3 +17,5 @@ pyapp/spec/*
 *.sln
 *.sw?
 toMe.txt
+*.tgz
+_index.ts

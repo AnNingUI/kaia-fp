@@ -8,7 +8,7 @@ export default defineConfig({
 		lib: {
 			entry: path.resolve(__dirname, "src/index.ts"),
 			name: "FPUtils",
-			fileName: (format) => `kaia-fp.${format}.js`,
+			fileName: (format) => `index.${format}.js`,
 		},
 		rollupOptions: {
 			external: (id) => !id.startsWith(".") && !path.isAbsolute(id),
