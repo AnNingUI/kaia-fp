@@ -17,4 +17,5 @@ npm install kaia-fp
 pnpm add kaia-fp
 yarn add kaia-fp
 bun add kaia-fp
+deno add jsr:@anning/kaia-fp
 ```
