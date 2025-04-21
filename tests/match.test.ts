@@ -16,7 +16,7 @@ const numListBuilder = (n: number) => {
 	return _list;
 };
 
-const numList = numListBuilder(10000);
+const numList = numListBuilder(100_0000);
 
 describe("模拟实际场景测试", () => {
 	describe("Match Functionality", () => {
@@ -104,8 +104,7 @@ describe("模拟实际场景测试", () => {
 
 	describe("Performance Test", () => {
 		// 130ms
-		it("10000随机大数据匹配判断性能测试", () => {
-			// Create the matcher manager
+		it("100_0000随机大数据匹配判断性能测试", () => {
 			const manager = matchSync<number, string>();
 
 			// Define the matchers
@@ -115,16 +114,28 @@ describe("模拟实际场景测试", () => {
 				.otherwise(() => "默认数字");
 
 			// Use matchForEach to handle each item lazily
-			const results = manager.forEach(numList, (val, i) => {
-				const a = numList[i];
-				if (a > 1000) {
-					expect(val).toBe(`大于1000：${a}`);
-				} else if (a < 10) {
-					expect(val).toBe(`小于10：${a}`);
-				} else {
-					expect(val).toBe("默认数字");
+			const results: string[] = [];
+			numList.forEach(function (item) {
+				const u = manager.run(item);
+				if (u.isRight()) {
+					results.push(u.value);
 				}
 			});
+			const iss: boolean[] = [];
+			// Validate the results
+			results.forEach((result, i) => {
+				const u = numList[i];
+				const expected =
+					u > 1000
+						? `大于1000：${numList[i]}`
+						: u < 10
+						? `小于10：${numList[i]}`
+						: "默认数字";
+				if (result == expected) {
+					iss.push(true);
+				}
+			});
+			expect(iss.length).toBe(numList.length);
 		});
 	});
 });

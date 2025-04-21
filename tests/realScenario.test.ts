@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { AsyncResult, AsyncResultMonad } from "../src/instances/asyncResult";
 import { IO, IOMonad } from "../src/instances/io";
+import { LazyArray } from "../src/instances/lazyArray";
 import { OptionMonad, type Options } from "../src/instances/option";
 import { Reader } from "../src/instances/reader";
 import { State, StateMonad } from "../src/instances/state";
@@ -12,6 +13,15 @@ import { Left } from "../src/utils/either";
 //
 // 模拟真实业务场景：用户数据处理、异步请求、日志记录与状态更新
 //
+const numListBuilder = (n: number, fn: (v: number) => number) => {
+	let _list = [];
+	for (let i = 0; i < n; i++) {
+		_list.push(fn(i));
+	}
+	return _list;
+};
+
+const numList = numListBuilder(100, (i) => i * 2);
 
 describe("模拟实际场景测试", () => {
 	// 模拟通过 Option 实现用户数据查询
@@ -129,6 +139,34 @@ describe("模拟实际场景测试", () => {
 			);
 			const result = await failureOp.run();
 			expect(result.isLeft()).toBe(true);
+		});
+	});
+
+	describe("LazyArray", () => {
+		it("should lazily map and flatMap values", () => {
+			// 原始数组
+			const source = [1, 2, 3];
+
+			// 创建 LazyArray
+			const lazy = LazyArray.fromArray(source)
+				.map((n) => n * 2) // [2, 4, 6]
+				.flatMap((n) => LazyArray.fromArray([n, n + 1])); // [2,3,4,5,6,7]
+			const arr = lazy.toArray();
+			expect(arr).toEqual([2, 3, 4, 5, 6, 7]);
+		});
+
+		it("should support LazyArray.of", () => {
+			const single = LazyArray.of(42);
+			const result = single.run();
+			expect(result.done).toBe(false);
+			expect(result.value).toBe(42);
+			expect(single.run().done).toBe(true); // 第二次已经耗尽
+		});
+
+		it("should return done after all values are consumed", () => {
+			const arr = LazyArray.fromArray([10]);
+			arr.run(); // consume one
+			expect(arr.run().done).toBe(true); // should be done
 		});
 	});
 });

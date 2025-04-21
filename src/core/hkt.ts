@@ -1,6 +1,7 @@
 import type {
 	AsyncResult,
 	IO,
+	LazyArray,
 	Options,
 	Reader,
 	State,
@@ -21,6 +22,7 @@ export interface URItoKind<A> {
 	Writer: Writer<any, A>;
 	State: State<any, A>;
 	AsyncResult: AsyncResult<any, A>;
+	LazyArray: LazyArray<A>;
 }
 
 export type Kind<F extends keyof URItoKind<A>, A> = URItoKind<A>[F];
