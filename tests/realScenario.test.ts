@@ -40,11 +40,19 @@ describe("模拟实际场景测试", () => {
 				user.name.toUpperCase()
 			);
 			// 通过判断 _tag 测试 Some 分支
-			if (result.isSome()) {
-				expect(result.value).toBe("ALICE");
-			} else {
-				throw new Error("Expected a Some instance");
-			}
+			// if (result.isSome()) {
+			// 	expect(result.value).toBe("ALICE");
+			// } else {
+			// 	throw new Error("Expected a Some instance");
+			// }
+			result.match({
+				some: (user) => {
+					expect(user).toBe("ALICE");
+				},
+				none: () => {
+					throw new Error("Expected a Some instance");
+				},
+			});
 		});
 	});
 

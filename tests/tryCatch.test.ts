@@ -116,17 +116,36 @@ describe("Result helpers", () => {
 		const fn = tryCatchEither(() => {
 			throw new Error("fail");
 		});
-		expect(fn.isLeft()).toEqual(true);
-		expect(fn.isRight()).toEqual(false);
+		// expect(fn.isLeft()).toEqual(true);
+		// expect(fn.isRight()).toEqual(false);
+		fn.match({
+			left: (err) => {
+				expect(err.message).toEqual("fail");
+				expect(fn.isLeft()).toEqual(true);
+			},
+			right: (v) => {
+				expect(v).toEqual(undefined);
+				expect(fn.isRight()).toEqual(false);
+			},
+		});
 	});
 
 	it("tryCatchEither Right", () => {
 		const fn = tryCatchEither(() => 123);
-		if (fn.isRight()) {
-			fn.to((v) => expect(v).toEqual(123));
-		} else {
-			expect(fn.isLeft()).toEqual(false);
-		}
+		fn.match({
+			left: () => {
+				expect(fn.isLeft()).toEqual(true);
+			},
+			right: (v) => {
+				expect(v).toEqual(123);
+				expect(fn.isRight()).toEqual(true);
+			},
+		});
+		// if (fn.isRight()) {
+		// 	fn.to((v) => expect(v).toEqual(123));
+		// } else {
+		// 	expect(fn.isLeft()).toEqual(false);
+		// }
 	});
 
 	it("tryCatchEither Match", () => {

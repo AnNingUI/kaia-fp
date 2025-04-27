@@ -2,7 +2,7 @@ import { HKT } from "../core/hkt";
 import { Monad } from "../core/typeClass";
 
 // export type Options<A> = Some<A> | A extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B>one;
-type OptionsValue = Some<any> | None;
+type OptionsValue<A> = Some<A> | None;
 export class Options<A> implements HKT<"Options", A> {
 	readonly _URI!: "Options";
 	readonly _A!: A;
@@ -31,6 +31,14 @@ export class Options<A> implements HKT<"Options", A> {
 
 	public getOrElse<B>(defaultValue: B): A | B {
 		return this.isSome() ? (this.value as A) : defaultValue;
+	}
+
+	public match<B>({ some, none }: { some: (value: A) => B; none: () => B }): B {
+		if (this.isSome()) {
+			return some?.(this.value!);
+		} else {
+			return none?.();
+		}
 	}
 }
 
