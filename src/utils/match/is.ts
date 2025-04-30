@@ -38,11 +38,17 @@ function compose<T>(preds: ((val: any) => boolean)[]): Predicate<T> {
 	return (val): val is T => preds.every((p) => p(val));
 }
 
+type IsNumberNoNaN = keyof Omit<IsNumberSelf, "match" | "toBool">;
 type IsNumberSelf = {
 	toBool(to: (n: number) => boolean): IsNumberSelf;
 	gt(n: number): IsNumberSelf;
 	lt(n: number): IsNumberSelf;
 	eq(n: number): IsNumberSelf;
+	even(): Omit<IsNumberSelf, "odd" | "even">;
+	odd(): Omit<IsNumberSelf, "even" | "odd">;
+	positive(): Omit<IsNumberSelf, "negative" | "positive">;
+	negative(): Omit<IsNumberSelf, "positive" | "negative">;
+	nan(): Omit<IsNumberSelf, IsNumberNoNaN>;
 	match: Predicate<number>;
 };
 const isNumber = (): IsNumberSelf => {
@@ -65,11 +71,31 @@ const isNumber = (): IsNumberSelf => {
 			preds.push((v) => v === n);
 			return self;
 		},
+		even() {
+			preds.push((v) => v % 2 === 0);
+			return self;
+		},
+		odd() {
+			preds.push((v) => v % 2 !== 0);
+			return self;
+		},
+		positive() {
+			preds.push((v) => v > 0);
+			return self;
+		},
+		negative() {
+			preds.push((v) => v < 0);
+			return self;
+		},
+		nan() {
+			preds.push((v) => Number.isNaN(v));
+			return self;
+		},
 		match: compose<number>(preds),
 	};
 	return self;
 };
-
+isNumber;
 type IsStringSelf = {
 	toBool(to: (n: string) => boolean): IsStringSelf;
 	test(r: RegExp): IsStringSelf;
@@ -86,6 +112,22 @@ const isString = (): IsStringSelf => {
 		},
 		test(r: RegExp) {
 			preds.push((v) => r.test(v));
+			return self;
+		},
+		startsWith(startStr: string, position?: number) {
+			preds.push((v: string) => v.startsWith(startStr, position));
+			return self;
+		},
+		endsWith(endStr: string, position?: number) {
+			preds.push((v: string) => v.endsWith(endStr, position));
+			return self;
+		},
+		length(n: number) {
+			preds.push((v) => v.length === n);
+			return self;
+		},
+		empty() {
+			preds.push((v) => v.length === 0);
 			return self;
 		},
 		includes(substr: string) {
