@@ -38,7 +38,7 @@ function compose<T>(preds: ((val: any) => boolean)[]): Predicate<T> {
 	return (val): val is T => preds.every((p) => p(val));
 }
 
-type IsNumberNoNaN = keyof Omit<IsNumberSelf, "match" | "toBool">;
+type IsNumberNoNaN = keyof Omit<IsNumberSelf, "match">;
 type IsNumberSelf = {
 	toBool(to: (n: number) => boolean): IsNumberSelf;
 	gt(n: number): IsNumberSelf;
@@ -89,7 +89,9 @@ const isNumber = (): IsNumberSelf => {
 		},
 		nan() {
 			preds.push((v) => Number.isNaN(v));
-			return self;
+			return {
+				match: self.match,
+			};
 		},
 		match: compose<number>(preds),
 	};
