@@ -1,4 +1,4 @@
-# 🌿 kaia-fp [![npm version](https://img.shields.io/npm/v/kaia-fp.svg)](https://www.npmjs.com/package/kaia-fp)
+# 🌿 kaia-fp [![npm version](https://img.shields.io/npm/v/kaia-fp.svg)](https://www.npmjs.com/package/kaia-fp) [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/AnNingUI/kaia-fp)
 
 A lightweight TypeScript functional programming library born from the evolution of my `fp-ts-learn`. Designed for composable and type-safe functional programming patterns.
 
