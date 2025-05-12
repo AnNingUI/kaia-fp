@@ -3,13 +3,13 @@ import { is } from "../match/is";
 
 export type Result<T, E> =
 	| {
-			ok?: null;
+			ok?: undefined;
 			err: E;
 			success: false;
 	  }
 	| {
 			ok: T;
-			err?: null;
+			err?: undefined;
 			success: true;
 	  };
 

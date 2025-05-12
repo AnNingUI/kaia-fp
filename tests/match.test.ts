@@ -47,24 +47,49 @@ describe("模拟实际场景测试", () => {
 			expect(result).toBe("以 hello 开头: hello world");
 		});
 
-		// 对象匹配，使用 `shape` 和 `optional`
+		// 对象匹配，使用 `shape` 和 `optional` 和 `union`
 		it("should match objects using shape", async () => {
 			const personShape = is.shape({
 				name: is.string().match,
-				age: is.optional(is.number().gt(0).match),
+				age: is.optional(is.number().inRange(0, 500).match),
+				permissions: is.union(is.literal(1).match, is.literal(2).match),
 			});
 			defineShape("Person", personShape);
 			const result = await match<unknown, string>()
 				.with(
-					getShape<{ name: string; age?: number }>("Person")!,
+					getShape<typeof personShape.inter>("Person")!,
 					(person) => `Hi ${person.name} (${person.age ?? "?"})`
 				)
 				.otherwise(() => "默认")
-				.run({ name: "Tom", age: 33 });
+				.run({ name: "Tom", age: 33, permissions: 1 });
 
 			expect(result).toBe("Hi Tom (33)");
 		});
 
+		// 对象继承匹配
+		it("should match objects using inheritance", async () => {
+			const personShape = is.shape({
+				name: is.string().match,
+				age: is.optional(is.number().inRange(0, 500).match),
+			});
+			const pPersonShape = is
+				.shape({
+					permissions: is.union(is.literal(1).match, is.literal(2).match),
+				})
+				.extends(personShape);
+			type pPersonShapeType = typeof pPersonShape.inter;
+			defineShape("pPerson", pPersonShape);
+			const result = await match<unknown, string>()
+				.with(
+					getShape<pPersonShapeType>("pPerson")!,
+					(person) =>
+						`[P-${person.permissions}] Hi ${person.name} (${person.age ?? "?"})`
+				)
+				.otherwise(() => "默认")
+				.run({ name: "Tom", age: 33, permissions: 1 });
+
+			expect(result).toBe("[P-1] Hi Tom (33)");
+		});
 		// 元组匹配
 		it("should match tuples", async () => {
 			const result = await match<unknown, string>()
@@ -99,6 +124,26 @@ describe("模拟实际场景测试", () => {
 				.run(150);
 
 			expect(result).toBe("大于100：150");
+		});
+	});
+	const isN = is.number();
+	const matchWrapper = (nf: (n: number) => number, n: number) => {
+		return matchSync<number, number>()
+			.with2((v) => v <= 1 || v == 2, 1)
+			.otherwise(() => nf(n - 1) + nf(n - 2))
+			.run(n).value as number;
+	};
+	describe("base math functions", () => {
+		it("fib", () => {
+			const fib = (n: number): number => {
+				if (n <= 1 || n == 2) return 1;
+				return fib(n - 1) + fib(n - 2);
+			};
+
+			const fibMatch = (n: number): number => {
+				return matchWrapper(fibMatch, n);
+			};
+			expect(fibMatch(-1)).toBe(fib(-1));
 		});
 	});
 

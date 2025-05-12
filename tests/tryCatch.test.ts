@@ -27,7 +27,7 @@ describe("tryCatch", () => {
 
 	it("wraps a successful async function", async () => {
 		const yt = async (x: number) => x + 1;
-		const fn = tryCatch(async (x: number) => x + 1);
+		const fn = tryCatch(yt);
 		const result = await fn(1);
 		expect(isSuccess(result)).toBe(true);
 		expect(Result.unwrap(result)).toBe(2);
@@ -151,7 +151,7 @@ describe("Result helpers", () => {
 	it("tryCatchEither Match", () => {
 		const fn = tryCatchEither(() => 123);
 		const { left, right } = fn.either();
-		const matcher = match()
+		const matcher = match<unknown, void>()
 			.with(left.match, (err) => {
 				expect(err).toEqual(undefined);
 				expect(fn.isLeft()).toEqual(true);
