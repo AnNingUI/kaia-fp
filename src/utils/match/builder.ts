@@ -3,7 +3,7 @@ import { Predicate } from "./is";
 type ShapeRegistry = Record<string, Record<string, Predicate<any>>>;
 
 const createRegistry = (init?: ShapeRegistry): ShapeRegistry =>
-	init ? structuredClone(init) : {};
+	init ? { ...init } : {};
 
 function createShapeManager(initial?: ShapeRegistry) {
 	let registry = createRegistry(initial);
