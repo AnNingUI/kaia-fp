@@ -1,5 +1,6 @@
 import { Either, Left, Right } from "../either";
 import { is } from "./is";
+import { MiniLRUCache } from "./miniLRUCache";
 type AsyncOrSync<T> = T | Promise<T>;
 type MatchHandler<T, R> = (val: T) => AsyncOrSync<R>;
 type MatchHandOrValue<T, R> = MatchHandler<T, R> | R;
@@ -48,7 +49,13 @@ interface MatcherManagerSync<Input, Output> {
 		handler: MatchHandOrValue<Input, Output>
 	): MatcherManagerSync<Input, Output>;
 	unwrap: (value: Input) => Either<null, Right<Output> | Right<undefined>>;
-	run: (value: Input) => Either<Error, Output>;
+	run: {
+		(value: Input): Either<Error, Output>;
+		(value: Input, noError: false): Either<Error, Output>;
+		(value: Input, noError: true): {
+			value?: Output;
+		};
+	};
 	forEach: (
 		list: Input[],
 		callback?: Callback<Output>
@@ -143,14 +150,30 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 	const cases = new Map<Condition<any>, MatchHandler<any, Output>>();
 	let fallbackHandler: MatchHandler<Input, Output> | null = null;
 
-	const runner = (value: Input): Either<Error, Output> => {
+	const runner = (
+		value: Input,
+		noError: boolean = false
+	):
+		| Either<Error, Output>
+		| {
+				value?: Output;
+		  } => {
 		for (const [check, handler] of cases) {
-			if (check(value)) return new Right(handler(value)) as Right<Output>;
+			if (check(value))
+				return noError
+					? ({ value: handler(value) as Output } as { value?: Output })
+					: (new Right(handler(value)) as Right<Output>);
 		}
 		if (fallbackHandler) {
-			return new Right(fallbackHandler(value)) as Right<Output>;
+			return noError
+				? ({ value: fallbackHandler(value) as Output } as { value?: Output })
+				: (new Right(fallbackHandler(value)) as Right<Output>);
 		}
-		return new Left(new Error("No match found"));
+		if (!noError) {
+			return new Left(new Error("No match found"));
+		} else {
+			return { value: undefined };
+		}
 	};
 
 	const forEach = (
@@ -226,7 +249,13 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 				>;
 			return new Right(undefined) as unknown as Either<null, Right<undefined>>;
 		},
-		run: runner,
+		run: runner as {
+			(value: Input): Either<Error, Output>;
+			(value: Input, noError: false): Either<Error, Output>;
+			(value: Input, noError: true): {
+				value?: Output;
+			};
+		},
 		forEach,
 	};
 
@@ -241,6 +270,91 @@ export function match<Input, Output>() {
 export function matchSync<Input, Output>(): MatcherManagerSync<Input, Output> {
 	const manager = createMatcherManagerSync<Input, Output>();
 	return manager;
+}
+type LRUOptions =
+	| {
+			useLRU: true;
+			maxSize: number;
+			maxAge: number;
+	  }
+	| {
+			useLRU: false;
+			maxSize?: number;
+			maxAge?: number;
+	  };
+
+/**
+ * This function is suitable for the fib function will be similar to the iterative evaluation of the value of the scenario,
+ * the use of caching can be avoided to repeat the calculation.
+ * @template Input , Output
+ * @param builder
+ * @param options
+ * @returns
+ * @example
+ * //
+ * // Of course, we recommend other algorithms,
+ * // such as the Matrix Fast Power Algorithm,
+ * // for purely tangent-linear computations.
+ * //
+ * const fibSyncMemo = matchSyncMemo<bigint, bigint>(
+ *		(self, m) =>
+ *			m
+ *				.with2((n) => n <= 1n || n === 2n, 1n)
+ *				.otherwise((n) => self(n - 1n) + self(n - 2n)),
+ *		{
+ *			useLRU: true,
+ *			maxSize: 50,
+ *			maxAge: 3000,
+ *		}
+ *	);
+ */
+export function matchSyncMemo<Input, Output>(
+	builder: (
+		self: (value: Input) => Output,
+		matcher: MatcherManagerSync<Input, Output>
+	) => MatcherManagerSync<Input, Output>,
+	options: LRUOptions = { useLRU: false, maxSize: 1000, maxAge: 1000 * 60 * 5 }
+): (value: Input) => Output {
+	let fn!: (value: Input) => Output;
+
+	// simple Map-based cache
+	const cache = options.useLRU
+		? new Map<Input, Output>()
+		: new MiniLRUCache<Input, Output>(options.maxSize!, options.maxAge!);
+	const weakCache = new WeakMap<any, Output>();
+
+	// now define fn for real
+	fn = (value: Input): Output => {
+		// 1) check cache
+		if (typeof value === "object") {
+			if (weakCache.has(value)) {
+				return weakCache.get(value) as Output;
+			}
+		} else if (cache.has(value)) {
+			return cache.get(value) as Output;
+		}
+
+		// 2) run the matcher
+		const result = builder((v: Input) => fn(v), matchSync<Input, Output>()).run(
+			value
+		);
+
+		// 3) error‐check
+		if (result instanceof Left) {
+			throw result.value;
+		}
+
+		// 4) cache & return
+		const out = (result as Right<Output>).value;
+		if (typeof value === "object") {
+			weakCache.set(value, out);
+		} else {
+			cache.set(value, out);
+		}
+		return out;
+	};
+
+	return fn;
 }
 
 export { createMatcherManager, createMatcherManagerSync };

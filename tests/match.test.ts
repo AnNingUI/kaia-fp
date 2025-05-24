@@ -6,8 +6,8 @@ import {
 	is,
 	match,
 	matchSync,
-} from "../src/utils/match";
-
+	matchSyncMemo,
+} from "../src/utils";
 const numListBuilder = (n: number) => {
 	let _list = [];
 	for (let i = 0; i < n; i++) {
@@ -15,7 +15,12 @@ const numListBuilder = (n: number) => {
 	}
 	return _list;
 };
-
+function measureSync<I, O>(fn: (i: I) => O, arg: I) {
+	const start = performance.now();
+	const res = fn(arg);
+	const end = performance.now();
+	return { duration: end - start, result: res };
+}
 const numList = numListBuilder(100_0000);
 
 describe("模拟实际场景测试", () => {
@@ -126,24 +131,86 @@ describe("模拟实际场景测试", () => {
 			expect(result).toBe("大于100：150");
 		});
 	});
-	const isN = is.number();
-	const matchWrapper = (nf: (n: number) => number, n: number) => {
-		return matchSync<number, number>()
-			.with2((v) => v <= 1 || v == 2, 1)
-			.otherwise(() => nf(n - 1) + nf(n - 2))
-			.run(n).value as number;
+
+	const fib = (n: number): number => {
+		if (n <= 1 || n == 2) return 1;
+		return fib(n - 1) + fib(n - 2);
 	};
+
+	// 内存换时间的函数 fibM 与 fibSyncMemo
+	function fibM(n: number): bigint {
+		if (n === 0) return 0n;
+		type bigtuple = [bigint, bigint, bigint, bigint];
+		const mul = ([a, b, c, d]: bigtuple, [e, f, g, h]: bigtuple) =>
+			[a * e + b * g, a * f + b * h, c * e + d * g, c * f + d * h] as bigtuple;
+		const pow = (m: bigtuple, n: number): bigtuple =>
+			n === 0
+				? [1n, 0n, 0n, 1n]
+				: n % 2 === 0
+				? pow(mul(m, m), n / 2)
+				: mul(m, pow(m, n - 1));
+		return pow([1n, 1n, 1n, 0n], n - 1)[0];
+	}
+
+	const fibSyncMemo = matchSyncMemo<bigint, bigint>(
+		(self, m) =>
+			m
+				.with2((n) => n <= 1n || n === 2n, 1n)
+				.otherwise((n) => self(n - 1n) + self(n - 2n)),
+		{
+			useLRU: true,
+			maxSize: 20,
+			maxAge: 3200,
+		}
+	);
+
+	function fibFastMemo(n: bigint): bigint {
+		if (n === 0n) return 0n;
+		if (n === 1n) return 1n;
+
+		type bigtuple = [bigint, bigint, bigint, bigint];
+
+		const mul = ([a, b, c, d]: bigtuple, [e, f, g, h]: bigtuple): bigtuple => [
+			a * e + b * g,
+			a * f + b * h,
+			c * e + d * g,
+			c * f + d * h,
+		];
+
+		const memoPow = matchSyncMemo<bigint, bigtuple>(
+			(self, m) =>
+				m
+					.with2(0n, () => [1n, 0n, 0n, 1n]) // identity matrix
+					.otherwise((n) =>
+						n % 2n === 0n
+							? mul(self(n / 2n), self(n / 2n))
+							: mul(base, self(n - 1n))
+					),
+			{
+				useLRU: true,
+				maxSize: 128, // 可根据性能与内存做权衡调整
+				maxAge: 10000,
+			}
+		);
+
+		const base: bigtuple = [1n, 1n, 1n, 0n];
+		return memoPow(n - 1n)[0];
+	}
+
 	describe("base math functions", () => {
 		it("fib", () => {
-			const fib = (n: number): number => {
-				if (n <= 1 || n == 2) return 1;
-				return fib(n - 1) + fib(n - 2);
-			};
+			const a = 1100;
+			const ba = BigInt(a);
+			const afs = measureSync(fibSyncMemo, ba);
+			console.log("[fibSyncMemo]: " + afs.duration + "ms");
+			const afm = measureSync(fibM, a);
+			console.log("[fibM]: " + afm.duration + "ms");
+			const afm2 = measureSync(fibFastMemo, ba);
+			console.log("[fibFastMemo]: " + afm2.duration + "ms");
+			console.log("fibSyncMemo 与 fibM误差：", afs.result - afm.result);
+			console.log("fibSyncMemo 与 fibFastMemo误差：", afm.result - afm2.result);
 
-			const fibMatch = (n: number): number => {
-				return matchWrapper(fibMatch, n);
-			};
-			expect(fibMatch(-1)).toBe(fib(-1));
+			expect(afm.result).toBe(afm2.result);
 		});
 	});
 
@@ -151,7 +218,6 @@ describe("模拟实际场景测试", () => {
 		// 130ms
 		it("100_0000随机大数据匹配判断性能测试", () => {
 			const manager = matchSync<number, string>();
-
 			// Define the matchers
 			manager
 				.with(is.number().gt(1000).match, (val) => `大于1000：${val}`)
@@ -160,26 +226,21 @@ describe("模拟实际场景测试", () => {
 
 			// Use matchForEach to handle each item lazily
 			const results: string[] = [];
-			numList.forEach(function (item) {
-				const u = manager.run(item);
-				if (u.isRight()) {
-					results.push(u.value);
-				}
+			manager.forEach(numList, (u) => {
+				results.push(u);
 			});
 			const iss: boolean[] = [];
 			// Validate the results
 			results.forEach((result, i) => {
 				const u = numList[i];
-				const expected =
-					u > 1000
-						? `大于1000：${numList[i]}`
-						: u < 10
-						? `小于10：${numList[i]}`
-						: "默认数字";
-				if (result == expected) {
+				if (
+					result ==
+					(u > 1000 ? `大于1000：${u}` : u < 10 ? `小于10：${u}` : "默认数字")
+				) {
 					iss.push(true);
 				}
 			});
+			console.log("匹配结果正确率：" + iss.length / numList.length);
 			expect(iss.length).toBe(numList.length);
 		});
 	});
