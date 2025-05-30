@@ -14,7 +14,7 @@ import { Left } from "../src/utils/either";
 // 模拟真实业务场景：用户数据处理、异步请求、日志记录与状态更新
 //
 const numListBuilder = (n: number, fn: (v: number) => number) => {
-	let _list = [];
+	let _list: number[] = [];
 	for (let i = 0; i < n; i++) {
 		_list.push(fn(i));
 	}

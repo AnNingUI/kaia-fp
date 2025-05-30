@@ -8,6 +8,7 @@ import {
 	matchSync,
 	matchSyncMemo,
 } from "../src/utils";
+import { randomTree, TreeNode } from "./tree";
 const numListBuilder = (n: number) => {
 	let _list = [];
 	for (let i = 0; i < n; i++) {
@@ -15,6 +16,7 @@ const numListBuilder = (n: number) => {
 	}
 	return _list;
 };
+
 function measureSync<I, O>(fn: (i: I) => O, arg: I) {
 	const start = performance.now();
 	const res = fn(arg);
@@ -242,6 +244,45 @@ describe("模拟实际场景测试", () => {
 			});
 			console.log("匹配结果正确率：" + iss.length / numList.length);
 			expect(iss.length).toBe(numList.length);
+		});
+	});
+
+	describe("Tree Node Matching", () => {
+		const largeTreeTraversalMemo = matchSyncMemo<TreeNode, number>(
+			(self, m) =>
+				m
+					.with2(
+						(node) => !!node,
+						(node) => {
+							const leftSum = node.left ? self(node.left) : 0;
+							const rightSum = node.right ? self(node.right) : 0;
+							return node.value + leftSum + rightSum;
+						}
+					)
+					.otherwise(() => 0),
+			{
+				useLRU: true,
+				maxSize: 10000, // 增大缓存以处理大型树
+				maxAge: 60000,
+				// treeMode: {
+				// 	enabled: true,
+				// 	getKey: (node) => node.id,
+				// },
+			}
+		);
+		function largeTreeTraversalNormal(node: TreeNode | undefined): number {
+			if (!node) return 0;
+
+			const leftSum = node.left ? largeTreeTraversalNormal(node.left) : 0;
+			const rightSum = node.right ? largeTreeTraversalNormal(node.right) : 0;
+			return node.value + leftSum + rightSum;
+		}
+		it("should match tree nodes with specific conditions", () => {
+			const a = measureSync(largeTreeTraversalMemo, randomTree);
+			const b = measureSync(largeTreeTraversalNormal, randomTree);
+			console.log("[largeTreeTraversalMemo]: " + a.duration + "ms");
+			console.log("[largeTreeTraversalNormal]: " + b.duration + "ms");
+			console.log("Memoization 与 普通遍历误差：", a.result - b.result);
 		});
 	});
 });
