@@ -70,8 +70,8 @@ describe("模拟实际场景测试", () => {
 // }
 
 // const createEasyFetch = curry(baseFetch);
-// export const easyFetchMain = createEasyFetch("http://localhost:3000/");
-// export const easyFetchFile = createEasyFetch("http://10.22.19.177:3000");
+// const easyFetchMain = createEasyFetch("http://localhost:3000/");
+// const easyFetchFile = createEasyFetch("http://10.22.19.177:3000");
 
 // interface AvatarI {
 // 	image: Blob;
@@ -81,7 +81,8 @@ describe("模拟实际场景测试", () => {
 // 	url: string;
 // }
 
-// export async function uploadAvatar(img: AvatarI) { // <- ReturnType is Promise<AvatarO>
+// async function uploadAvatar(img: AvatarI) {
+// 	// <- ReturnType is Promise<AvatarO>
 // 	const formData = new FormData();
 // 	formData.append("image", img.image);
 // 	formData.append("pathPrefix", img.pathPrefix);
@@ -91,12 +92,12 @@ describe("模拟实际场景测试", () => {
 // 	});
 // }
 // const createEasyFetchWithDefault = curryWithDefault(baseFetch);
-// export const easyFetchMainWithDefault = createEasyFetchWithDefault(
+// const easyFetchMainWithDefault = createEasyFetchWithDefault(
 // 	_,
 // 	_,
 // 	"http://localhost:3000/"
 // );
-// export const easyFetchFileWithDefault = createEasyFetchWithDefault(
+// const easyFetchFileWithDefault = createEasyFetchWithDefault(
 // 	_,
 // 	_,
 // 	"http://10.22.19.177:3000"
