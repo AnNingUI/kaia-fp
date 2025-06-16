@@ -13,15 +13,39 @@ type DropPlaceholders<
 		: Args
 	: [];
 
-type CurriedFunction<Args extends any[], R> = <T extends any[]>(
+type Length<T extends any[]> = T["length"];
+
+// Promise decode & encode
+type PromiseDE<T, U> = T extends Promise<unknown> ? Promise<U> : U;
+
+type CurriedFunction<Args extends any[], R> = <
+	OtherReturn = R,
+	T extends any[] = Args
+>(
 	...args: T
 ) => DropPlaceholders<Args, T> extends infer RestArgs
 	? RestArgs extends any[]
-		? RestArgs["length"] extends 0
-			? R
+		? Length<RestArgs> extends 0
+			? R extends OtherReturn
+				? R
+				: PromiseDE<R, OtherReturn>
 			: CurriedFunction<RestArgs, R>
 		: never
 	: never;
+
+type CurriedVariadic<TArgs extends any[], R> = {
+	<_OtherReturn = R, OtherReturn = PromiseDE<R, _OtherReturn>>(
+		...args: TArgs
+	): CurriedVariadic<TArgs, OtherReturn>;
+	exec: () => R;
+};
+
+type CurriedWithDefault<Args extends any[], R> = {
+	<_OtherReturn = R, OtherReturn = PromiseDE<R, _OtherReturn>>(
+		...args: any[]
+	): CurriedWithDefault<Args, OtherReturn>;
+	exec: () => R;
+};
 
 function mergeArgs(prev: any[], next: any[]): any[] {
 	const result: any[] = [];
@@ -53,9 +77,11 @@ function countNonPlaceholder(args: any[]): number {
  * @param fn
  * @returns
  */
-export function curry<F extends (...args: any[]) => any>(
-	fn: F
-): CurriedFunction<Parameters<F>, ReturnType<F>> {
+export function curry<
+	F extends (...args: any[]) => any,
+	Args extends any[] = Parameters<F>,
+	R = ReturnType<F>
+>(fn: F): CurriedFunction<Args, R> {
 	const arity = fn.length;
 
 	function curried(accum: any[]): any {
@@ -73,11 +99,6 @@ export function curry<F extends (...args: any[]) => any>(
 
 	return curried([]);
 }
-
-type CurriedVariadic<TArgs extends any[], R> = {
-	(...args: TArgs): CurriedVariadic<TArgs, R>;
-	exec: () => R;
-};
 
 /**
  * Curry for variadic functions (e.g., with optional/rest parameters).
@@ -98,11 +119,6 @@ export function curryVariadic<TArgs extends any[], R>(
 
 	return build([] as unknown as TArgs);
 }
-
-type CurriedWithDefault<Args extends any[], R> = {
-	(...args: any[]): CurriedWithDefault<Args, R>;
-	exec: () => R;
-};
 
 function mergeArgsWithDefault(
 	oldArgs: any[],
@@ -133,14 +149,14 @@ function initArgs(length: number, placeholder: any = _): any[] {
  * Curry with default parameters.
  * Returns new scope each call. Supports placeholder. Requires manual `.exec()`.
  */
-export function curryWithDefault<F extends (...args: any[]) => any>(
-	fn: F
-): CurriedWithDefault<Parameters<F>, ReturnType<F>> {
+export function curryWithDefault<
+	F extends (...args: any[]) => any,
+	Args extends any[] = Parameters<F>,
+	R = ReturnType<F>
+>(fn: F): CurriedWithDefault<Args, R> {
 	const total = fn.length;
 
-	function build(
-		args: any[]
-	): CurriedWithDefault<Parameters<F>, ReturnType<F>> {
+	function build(args: any[]): CurriedWithDefault<Args, R> {
 		const curried: any = (...next: any[]) => {
 			const merged = mergeArgsWithDefault(args, next);
 			return build(merged);
