@@ -54,3 +54,67 @@ describe("模拟实际场景测试", () => {
 		expect(p).toBe("Mr. Bob?");
 	});
 });
+
+// exp:
+
+// async function baseFetch<T>(
+// 	baseUrl: string,
+// 	apiUrl: string,
+// 	options: RequestInit = {}
+// ): Promise<T> {
+// 	const response = await fetch(baseUrl + apiUrl, options);
+// 	if (!response.ok) {
+// 		throw new Error(`Network response was not ok: ${response.status}`);
+// 	}
+// 	return response.json();
+// }
+
+// const createEasyFetch = curry(baseFetch);
+// export const easyFetchMain = createEasyFetch("http://localhost:3000/");
+// export const easyFetchFile = createEasyFetch("http://10.22.19.177:3000");
+
+// interface AvatarI {
+// 	image: Blob;
+// 	pathPrefix: string;
+// }
+// interface AvatarO {
+// 	url: string;
+// }
+
+// export async function uploadAvatar(img: AvatarI) { // <- ReturnType is Promise<AvatarO>
+// 	const formData = new FormData();
+// 	formData.append("image", img.image);
+// 	formData.append("pathPrefix", img.pathPrefix);
+// 	return easyFetchFile<AvatarO>("/api/create", {
+// 		method: "POST",
+// 		body: formData,
+// 	});
+// }
+// const createEasyFetchWithDefault = curryWithDefault(baseFetch);
+// export const easyFetchMainWithDefault = createEasyFetchWithDefault(
+// 	_,
+// 	_,
+// 	"http://localhost:3000/"
+// );
+// export const easyFetchFileWithDefault = createEasyFetchWithDefault(
+// 	_,
+// 	_,
+// 	"http://10.22.19.177:3000"
+// );
+
+// export function uploadAvatar(img: AvatarI) {
+// 	// <- ReturnType is Promise<AvatarO>
+// 	const formData = new FormData();
+// 	formData.append("image", img.image);
+// 	formData.append("pathPrefix", img.pathPrefix);
+// 	return easyFetchFileWithDefault<AvatarO>("/api/create", {
+// 		method: "POST",
+// 		body: formData,
+// 	});
+// }
+
+// const result = uploadAvatar({
+// 	image: new Blob(["test"], { type: "text/plain" }),
+// 	pathPrefix: "test",
+// });
+// const a = result.exec(); // <- returns Promise<AvatarO>
