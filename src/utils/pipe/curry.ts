@@ -1,5 +1,5 @@
 export const _ = Symbol("_");
-
+export type Placeholder = typeof _;
 type IsPlaceholder<T> = T extends typeof _ ? true : false;
 
 type DropPlaceholders<
