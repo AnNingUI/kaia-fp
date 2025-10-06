@@ -1,4 +1,3 @@
-import alias from "@rollup/plugin-alias";
 import typescript from "@rollup/plugin-typescript";
 import path from "path";
 import { defineConfig } from "vite";
@@ -18,22 +17,6 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		alias({
-			entries: [
-				{
-					find: "kaia-fs/core",
-					replacement: path.resolve(__dirname, "src/core"),
-				},
-				{
-					find: "kaia-fs/utils",
-					replacement: path.resolve(__dirname, "src/utils"),
-				},
-				{
-					find: "kaia-fs/instances",
-					replacement: path.resolve(__dirname, "src/instances"),
-				},
-			],
-		}),
 		typescript({
 			tsconfig: path.resolve(__dirname, "./tsconfig.build.json"),
 			declaration: true,
