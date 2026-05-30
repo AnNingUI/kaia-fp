@@ -2,7 +2,6 @@ import { HKT } from "../core/hkt";
 import { Monad } from "../core/typeClass";
 
 // export type Options<A> = Some<A> | A extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B>one;
-type OptionsValue<A> = Some<A> | None;
 export class Options<A> implements HKT<"Options", A> {
 	readonly _URI!: "Options";
 	readonly _A!: A;
@@ -33,7 +32,13 @@ export class Options<A> implements HKT<"Options", A> {
 		return this.isSome() ? (this.value as A) : defaultValue;
 	}
 
-	public match<B>({ some, none }: { some: (value: A) => B; none: () => B }): B {
+	public match<B>({
+		some,
+		none,
+	}: {
+		some: (value: NonNullable<A>) => B;
+		none: () => B;
+	}): B {
 		if (this.isSome()) {
 			return some?.(this.value!);
 		} else {
@@ -41,7 +46,7 @@ export class Options<A> implements HKT<"Options", A> {
 		}
 	}
 
-	public flatMap<B>(f: (a: A) => Options<B>) {
+	public flatMap<B>(f: (a: NonNullable<A>) => Options<B>) {
 		if (this.isSome()) {
 			return f(this.value!);
 		} else {
@@ -86,7 +91,7 @@ export const OptionMonad: {
 	none: () => None;
 } & Monad<"Options"> = {
 	none: () => None.of(),
-	of: <A>(a: A): Options<A> => new Some(a),
+	of: <A>(a: A): Options<A> => (isNoNull(a) ? new Some(a) : None.of()),
 	map: (fa, f) => (fa instanceof Some ? new Some(f(fa.value)) : None.of()),
 	ap: (fab, fa) =>
 		fab instanceof Some && fa instanceof Some
@@ -95,6 +100,16 @@ export const OptionMonad: {
 	flatMap: (fa, f) => (fa instanceof Some ? f(fa.value) : None.of()),
 };
 
-const isNull = (value: any) => {
-	return value === null || value === undefined;
+const isNoNull = <T>(value: T) => {
+	return !(value === null || value === undefined);
 };
+
+/**
+ * @deprecated use `Options` instead
+ */
+export type Maybe<T> = Options<T>;
+
+/**
+ * @deprecated use `OptionMonad` instead
+ */
+export const MaybeMonad = OptionMonad;

@@ -26,12 +26,32 @@ export class LazyArray<A> implements HKT<"LazyArray", A> {
 		return this.generator.next();
 	}
 
+	/**
+	 * @deprecated use `applyEach` instead
+	 * @param to
+	 */
 	goto<O>(to: (c: A) => O) {
+		this.applyEach(to);
+	}
+
+	applyEach<O>(f: (c: A) => O) {
 		let next;
 		while (!(next = this.generator.next()).done) {
-			to(next.value);
+			f(next.value);
 		}
 		this.generator.return();
+	}
+
+	// forEach
+	forEach(f: (a: A) => void) {
+		const gen = this.generator;
+		return new LazyArray(function* () {
+			let result: IteratorResult<A>;
+			while (!(result = gen.next()).done) {
+				f(result.value);
+				yield result.value;
+			}
+		});
 	}
 
 	toArray(): A[] {
@@ -44,11 +64,21 @@ export class LazyArray<A> implements HKT<"LazyArray", A> {
 	}
 
 	map<B>(f: (a: A) => B): LazyArray<B> {
+		const gen = this.generator;
+		return new LazyArray(function* () {
+			let result: IteratorResult<A>;
+			while (!(result = gen.next()).done) {
+				yield f(result.value);
+			}
+		});
+	}
+
+	filter(f: (a: A) => boolean): LazyArray<A> {
 		const self = this;
 		return new LazyArray(function* () {
 			let result: IteratorResult<A>;
 			while (!(result = self.generator.next()).done) {
-				yield f(result.value);
+				if (f(result.value)) yield result.value;
 			}
 		});
 	}

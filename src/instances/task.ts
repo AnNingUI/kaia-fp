@@ -1,5 +1,5 @@
-import { makeMonad } from "../core/utils";
 import { HKT } from "../core/hkt";
+import { makeMonad } from "../core/utils";
 
 export class Task<A> implements HKT<"Task", A> {
 	readonly _URI!: "Task";
@@ -18,6 +18,17 @@ export class Task<A> implements HKT<"Task", A> {
 	flatMap<B>(f: (a: A) => Task<B>): Task<B> {
 		return new Task(() => this.run().then((a) => f(a).run()));
 	}
+
+	ap<B>(fab: Task<(a: A) => B>): Task<B> {
+		return new Task(() =>
+			Promise.all([fab.run(), this.run()]).then(([f, a]) => f(a))
+		);
+	}
 }
 
-export const TaskMonad = makeMonad("Task", Task, Task.of);
+export const TaskMonad = makeMonad(
+	"Task",
+	Task,
+	Task.of,
+	<A, B>(fab: Task<(a: A) => B>, fa: Task<A>) => fa.ap(fab)
+);

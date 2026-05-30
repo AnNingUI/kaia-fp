@@ -8,12 +8,7 @@
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"strict": true,
-		"baseUrl": "./src",
-		"paths": {
-			"kaia-fs/core/*": ["src/core/*"],
-			"kaia-fs/utils/*": ["src/utils/*"],
-			"kaia-fs/instances/*": ["src/instances/*"]
-		}
+		"baseUrl": "./src"
 	},
 	"include": ["src", "tests"]
 }
