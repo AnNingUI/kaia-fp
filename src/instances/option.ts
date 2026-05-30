@@ -103,3 +103,13 @@ export const OptionMonad: {
 const isNoNull = <T>(value: T) => {
 	return !(value === null || value === undefined);
 };
+
+/**
+ * @deprecated use `Options` instead
+ */
+export type Maybe<T> = Options<T>;
+
+/**
+ * @deprecated use `OptionMonad` instead
+ */
+export const MaybeMonad = OptionMonad;

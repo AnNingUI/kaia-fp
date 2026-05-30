@@ -151,16 +151,34 @@ describe("模拟实际场景测试", () => {
 	});
 
 	describe("LazyArray", () => {
-		it("should lazily map and flatMap values", () => {
+		it("should lazily map and flatMap values with performance detection", () => {
 			// 原始数组
 			const source = [1, 2, 3];
+			const source2 = [1, 2, 3];
 
-			// 创建 LazyArray
+			// 性能检测：LazyArray 操作
+			console.time("LazyArray Performance");
 			const lazy = LazyArray.fromArray(source)
 				.map((n) => n * 2) // [2, 4, 6]
-				.flatMap((n) => LazyArray.fromArray([n, n + 1])); // [2,3,4,5,6,7]
+				.flatMap((n) => LazyArray.fromArray([n, n + 1])) // [2,3,4,5,6,7]
+				.filter((n) => n % 2 === 0) // [2, 4, 6]
+				.forEach((n) => console.log(`[Lazy] ${n}`)); // 2, 4, 6
+			console.timeEnd("LazyArray Performance");
+
+			// 性能检测：普通数组操作
+			console.time("Native Array Performance");
+			source2
+				.map((n) => n * 2) // [2, 4, 6]
+				.flatMap((n) => [n, n + 1]) // [2,3,4,5,6,7]
+				.filter((n) => n % 2 === 0) // [2, 4, 6]
+				.forEach((n) => console.log(n));
+			console.timeEnd("Native Array Performance");
+
+			// 验证结果
+			console.time("LazyArray Performance - toArray");
 			const arr = lazy.toArray();
-			expect(arr).toEqual([2, 3, 4, 5, 6, 7]);
+			console.timeEnd("LazyArray Performance - toArray");
+			expect(arr).toEqual([2, 4, 6]);
 		});
 
 		it("should support LazyArray.of", () => {

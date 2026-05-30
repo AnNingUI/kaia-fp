@@ -19,3 +19,8 @@ pyapp/spec/*
 toMe.txt
 *.tgz
 _index.ts
+.gitnexus
+.omc
+.claude
+AGENTS.md
+CLAUDE.md

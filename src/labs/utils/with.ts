@@ -189,65 +189,65 @@ export async function letAsync<T, R>(
 // console.log("structuredClone result:", obj2 === c2);
 
 // 简化测试用例，先验证基本功能
-const simpleObj = { map: new Map([["key", "value"]]) };
-console.log("Original map:", simpleObj.map);
+// const simpleObj = { map: new Map([["key", "value"]]) };
+// console.log("Original map:", simpleObj.map);
 
-// 测试 deepCloneIterative
-const cloned1 = deepCloneIterative(simpleObj);
-console.log("deepCloneIterative result:", cloned1);
-console.log("deepCloneIterative map:", cloned1.map);
+// // 测试 deepCloneIterative
+// const cloned1 = deepCloneIterative(simpleObj);
+// console.log("deepCloneIterative result:", cloned1);
+// console.log("deepCloneIterative map:", cloned1.map);
 
-// 测试 structuredClone
-const cloned2 = structuredClonePolyfill(simpleObj);
-console.log("structuredClone result:", cloned2);
-console.log("structuredClone map:", cloned2.map);
+// // 测试 structuredClone
+// const cloned2 = structuredClonePolyfill(simpleObj);
+// console.log("structuredClone result:", cloned2);
+// console.log("structuredClone map:", cloned2.map);
 
-// 如果基本测试通过，再进行性能测试
-if (cloned1.map && cloned2.map) {
-	const obj = {
-		nested: { deeply: { nested: { value: "test" } } },
-		array: [1, 2, [3, 4, [5, 6]]],
-		date: new Date(),
-		regex: /test/gi,
-		map: new Map([["key", "value"]]),
-		set: new Set([1, 2, 3]),
-	};
+// // 如果基本测试通过，再进行性能测试
+// if (cloned1.map && cloned2.map) {
+// 	const obj = {
+// 		nested: { deeply: { nested: { value: "test" } } },
+// 		array: [1, 2, [3, 4, [5, 6]]],
+// 		date: new Date(),
+// 		regex: /test/gi,
+// 		map: new Map([["key", "value"]]),
+// 		set: new Set([1, 2, 3]),
+// 	};
 
-	console.time("deepCloneIterative");
-	const w = iw(obj, deepCloneIterative);
-	let c;
-	for (let i = 0; i < 10000; i++) {
-		const v = w.also((it) => {
-			it.map.set("key", "value2");
-		});
-		if (i === 9999) {
-			c = v;
-		}
-	}
-	console.timeEnd("deepCloneIterative");
-	console.log("deepCloneIterative result:", obj === c);
+// 	console.time("deepCloneIterative");
+// 	const w = iw(obj, deepCloneIterative);
+// 	let c;
+// 	for (let i = 0; i < 10000; i++) {
+// 		const v = w.also((it) => {
+// 			it.map.set("key", "value2");
+// 		});
+// 		if (i === 9999) {
+// 			c = v;
+// 		}
+// 	}
+// 	console.timeEnd("deepCloneIterative");
+// 	console.log("deepCloneIterative result:", obj === c);
 
-	const obj2 = {
-		nested: { deeply: { nested: { value: "test" } } },
-		array: [1, 2, [3, 4, [5, 6]]],
-		date: new Date(),
-		regex: /test/gi,
-		map: new Map([["key", "value"]]),
-		set: new Set([1, 2, 3]),
-	};
-	console.time("structuredClone");
-	const w2 = iw(obj2);
-	let c2;
-	for (let i = 0; i < 10000; i++) {
-		const v = w2.also((it) => {
-			it.map.set("key", "value2");
-		});
-		if (i === 9999) {
-			c2 = v;
-		}
-	}
-	console.timeEnd("structuredClone");
-	console.log("structuredClone result:", obj2 === c2);
-} else {
-	console.error("Clone function failed to preserve Map objects");
-}
+// 	const obj2 = {
+// 		nested: { deeply: { nested: { value: "test" } } },
+// 		array: [1, 2, [3, 4, [5, 6]]],
+// 		date: new Date(),
+// 		regex: /test/gi,
+// 		map: new Map([["key", "value"]]),
+// 		set: new Set([1, 2, 3]),
+// 	};
+// 	console.time("structuredClone");
+// 	const w2 = iw(obj2);
+// 	let c2;
+// 	for (let i = 0; i < 10000; i++) {
+// 		const v = w2.also((it) => {
+// 			it.map.set("key", "value2");
+// 		});
+// 		if (i === 9999) {
+// 			c2 = v;
+// 		}
+// 	}
+// 	console.timeEnd("structuredClone");
+// 	console.log("structuredClone result:", obj2 === c2);
+// } else {
+// 	console.error("Clone function failed to preserve Map objects");
+// }

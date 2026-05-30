@@ -2,11 +2,6 @@ import { HKT } from "../core/hkt";
 import { Monad } from "../core/typeClass";
 import { makeMonad } from "../core/utils";
 
-type LogNode<W> = {
-	log: W;
-	next: LogNode<W> | null;
-};
-
 export class Writer<W, A> implements HKT<"Writer", A> {
 	readonly _URI!: "Writer";
 	readonly _A!: A;
@@ -14,12 +9,12 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 	constructor(
 		public readonly value: A,
 		public readonly log: W, // This remains unchanged (as a string in the case of your example)
-		private readonly monoid: { empty: W; concat: (w1: W, w2: W) => W }
+		private readonly monoid: { empty: W; concat: (w1: W, w2: W) => W },
 	) {}
 
 	static of<W, A>(
 		monoid: { empty: W; concat: (w1: W, w2: W) => W },
-		a: A
+		a: A,
 	): Writer<W, A> {
 		return new Writer(a, monoid.empty, monoid);
 	}
@@ -31,8 +26,8 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 	ap<B>(fab: Writer<W, (a: A) => B>): Writer<W, B> {
 		return new Writer(
 			fab.value(this.value),
-			this.monoid.concat(this.log, fab.log), // Direct concatenation
-			this.monoid
+			this.monoid.concat(fab.log, this.log), // Direct concatenation
+			this.monoid,
 		);
 	}
 
@@ -41,7 +36,7 @@ export class Writer<W, A> implements HKT<"Writer", A> {
 		return new Writer(
 			result.value,
 			this.monoid.concat(this.log, result.log), // Direct concatenation
-			this.monoid
+			this.monoid,
 		);
 	}
 

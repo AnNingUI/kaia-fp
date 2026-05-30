@@ -7,6 +7,8 @@ import {
 	match,
 	matchSync,
 	matchSyncMemo,
+	matchSyncNoEither,
+	matchSyncNoEitherMemo,
 } from "../src/utils";
 import { randomTree, TreeNode } from "./tree";
 const numListBuilder = (n: number) => {
@@ -42,11 +44,11 @@ describe("模拟实际场景测试", () => {
 			const result = await match<any, string>()
 				.with(
 					is.string().test(/^hello/).match,
-					(str) => `以 hello 开头: ${str}`
+					(str) => `以 hello 开头: ${str}`,
 				)
 				.with(
 					is.string().test(/world$/).match,
-					(str) => `以 world 结尾: ${str}`
+					(str) => `以 world 结尾: ${str}`,
 				)
 				.otherwise(() => "未知字符串")
 				.run("hello world");
@@ -65,7 +67,7 @@ describe("模拟实际场景测试", () => {
 			const result = await match<unknown, string>()
 				.with(
 					getShape<typeof personShape.inter>("Person")!,
-					(person) => `Hi ${person.name} (${person.age ?? "?"})`
+					(person) => `Hi ${person.name} (${person.age ?? "?"})`,
 				)
 				.otherwise(() => "默认")
 				.run({ name: "Tom", age: 33, permissions: 1 });
@@ -90,7 +92,7 @@ describe("模拟实际场景测试", () => {
 				.with(
 					getShape<pPersonShapeType>("pPerson")!,
 					(person) =>
-						`[P-${person.permissions}] Hi ${person.name} (${person.age ?? "?"})`
+						`[P-${person.permissions}] Hi ${person.name} (${person.age ?? "?"})`,
 				)
 				.otherwise(() => "默认")
 				.run({ name: "Tom", age: 33, permissions: 1 });
@@ -102,7 +104,7 @@ describe("模拟实际场景测试", () => {
 			const result = await match<unknown, string>()
 				.with(
 					is.tuple([is.string().match, is.number().match]),
-					([name, age]) => `元组匹配：${name}-${age}`
+					([name, age]) => `元组匹配：${name}-${age}`,
 				)
 				.otherwise(() => "未知元组")
 				.run(["Tom", 30]);
@@ -149,8 +151,8 @@ describe("模拟实际场景测试", () => {
 			n === 0
 				? [1n, 0n, 0n, 1n]
 				: n % 2 === 0
-				? pow(mul(m, m), n / 2)
-				: mul(m, pow(m, n - 1));
+					? pow(mul(m, m), n / 2)
+					: mul(m, pow(m, n - 1));
 		return pow([1n, 1n, 1n, 0n], n - 1)[0];
 	}
 
@@ -163,7 +165,7 @@ describe("模拟实际场景测试", () => {
 			useLRU: true,
 			maxSize: 20,
 			maxAge: 3200,
-		}
+		},
 	);
 
 	function fibFastMemo(n: bigint): bigint {
@@ -179,24 +181,18 @@ describe("模拟实际场景测试", () => {
 			c * f + d * h,
 		];
 
-		const memoPow = matchSyncMemo<bigint, bigtuple>(
-			(self, m) =>
-				m
-					.with2(0n, () => [1n, 0n, 0n, 1n]) // identity matrix
-					.otherwise((n) =>
-						n % 2n === 0n
-							? mul(self(n / 2n), self(n / 2n))
-							: mul(base, self(n - 1n))
-					),
-			{
-				useLRU: true,
-				maxSize: 128, // 可根据性能与内存做权衡调整
-				maxAge: 10000,
-			}
+		const memoPow = matchSyncNoEitherMemo<bigint, bigtuple>((self, m) =>
+			m
+				.with2(0n, () => [1n, 0n, 0n, 1n]) // identity matrix
+				.otherwise((n) =>
+					n % 2n === 0n
+						? mul(self(n / 2n), self(n / 2n))
+						: mul(base, self(n - 1n)),
+				),
 		);
 
 		const base: bigtuple = [1n, 1n, 1n, 0n];
-		return memoPow(n - 1n)[0];
+		return memoPow(n - 1n)![0];
 	}
 
 	describe("base math functions", () => {
@@ -209,7 +205,7 @@ describe("模拟实际场景测试", () => {
 			console.log("[fibM]: " + afm.duration + "ms");
 			const afm2 = measureSync(fibFastMemo, ba);
 			console.log("[fibFastMemo]: " + afm2.duration + "ms");
-			console.log("fibSyncMemo 与 fibM误差：", afs.result - afm.result);
+			console.log("fibSyncMemo 与 fibM误差：", afs.result! - afm.result);
 			console.log("fibSyncMemo 与 fibFastMemo误差：", afm.result - afm2.result);
 
 			expect(afm.result).toBe(afm2.result);
@@ -221,6 +217,7 @@ describe("模拟实际场景测试", () => {
 		it("100_0000随机大数据匹配判断性能测试", () => {
 			const manager = matchSync<number, string>();
 			// Define the matchers
+
 			manager
 				.with(is.number().gt(1000).match, (val) => `大于1000：${val}`)
 				.with(is.number().lt(10).match, (val) => `小于10：${val}`)
@@ -248,27 +245,51 @@ describe("模拟实际场景测试", () => {
 	});
 
 	describe("Tree Node Matching", () => {
+		const largeTreeTraversalMatch = matchSyncNoEither<TreeNode, number>()
+			.otherwise(0)
+			.with2(
+				(node) => !!node,
+				(node) => {
+					const lnode = largeTreeTraversalMatch.run(node.left!)!;
+					const rnode = largeTreeTraversalMatch.run(node.right!)!;
+					return node.value + lnode + rnode;
+				},
+			);
+		const largeTreeTraversalMatchRun = (node: TreeNode) => {
+			const v = largeTreeTraversalMatch.run(node);
+			return v ? v : 0;
+		};
 		const largeTreeTraversalMemo = matchSyncMemo<TreeNode, number>(
 			(self, m) =>
-				m
-					.with2(
-						(node) => !!node,
-						(node) => {
-							const leftSum = node.left ? self(node.left) : 0;
-							const rightSum = node.right ? self(node.right) : 0;
-							return node.value + leftSum + rightSum;
-						}
-					)
-					.otherwise(() => 0),
+				m.otherwise(0).with2(
+					(node) => !!node,
+					(node) => {
+						const leftSum = node.left ? self(node.left) : 0;
+						const rightSum = node.right ? self(node.right) : 0;
+						return node.value + leftSum + rightSum;
+					},
+				),
 			{
 				useLRU: true,
 				maxSize: 10000, // 增大缓存以处理大型树
 				maxAge: 60000,
-				// treeMode: {
-				// 	enabled: true,
-				// 	getKey: (node) => node.id,
-				// },
-			}
+			},
+		);
+		const largeTreeTraversalMemoNoEither = matchSyncNoEitherMemo<TreeNode, number>(
+			(self, m) =>
+				m.otherwise(0).with2(
+					(node) => !!node,
+					(node) => {
+						const leftSum = node.left ? self(node.left) : 0;
+						const rightSum = node.right ? self(node.right) : 0;
+						return node.value + leftSum + rightSum;
+					},
+				),
+			{
+				useLRU: true,
+				maxSize: 10000, // 增大缓存以处理大型树
+				maxAge: 60000,
+			},
 		);
 		function largeTreeTraversalNormal(node: TreeNode | undefined): number {
 			if (!node) return 0;
@@ -280,9 +301,36 @@ describe("模拟实际场景测试", () => {
 		it("should match tree nodes with specific conditions", () => {
 			const a = measureSync(largeTreeTraversalMemo, randomTree);
 			const b = measureSync(largeTreeTraversalNormal, randomTree);
-			console.log("[largeTreeTraversalMemo]: " + a.duration + "ms");
+			const c = measureSync(largeTreeTraversalMatchRun, randomTree);
+			const d = measureSync(largeTreeTraversalMemoNoEither, randomTree);
 			console.log("[largeTreeTraversalNormal]: " + b.duration + "ms");
-			console.log("Memoization 与 普通遍历误差：", a.result - b.result);
+			console.log("[largeTreeTraversalMatchRun]: " + c.duration + "ms");
+			console.log("[largeTreeTraversalMemo]: " + a.duration + "ms");
+			console.log("[largeTreeTraversalMemoNoEither]: " + d.duration + "ms");
+			console.log(
+				"MatchRun 与 普通遍历误差：",
+				c.result - b.result,
+				"a: ",
+				a.result,
+				"c: ",
+				c.result,
+			);
+			console.log(
+				"Memoization 与 普通遍历误差：",
+				a.result! - b.result,
+				"a: ",
+				a.result,
+				"b: ",
+				b.result,
+			);
+			console.log(
+				"MemoizationNoEither 与 普通遍历误差：",
+				d.result! - b.result,
+				"d: ",
+				d.result,
+				"c: ",
+				c.result,
+			);
 		});
 	});
 });
