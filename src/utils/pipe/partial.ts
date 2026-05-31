@@ -21,6 +21,11 @@ export function partial<T extends (...args: any[]) => any>(
 
 		for (let i = 0; i < args.length; i++) {
 			if (args[i] === _) {
+				if (innerArgsPosition >= innerArgs.length) {
+					throw new Error(
+						`Not enough arguments to fill placeholders. Expected at least ${innerArgsPosition + 1} but got ${innerArgs.length}.`
+					);
+				}
 				finalArgs.push(innerArgs[innerArgsPosition++]);
 			} else {
 				finalArgs.push(args[i]);

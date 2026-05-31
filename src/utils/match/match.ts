@@ -90,9 +90,24 @@ function createMatcherManager<Input, Output>(): MatcherManager<Input, Output> {
 	const cases = new Map<Condition<any>, MatchHandler<any, Output>>();
 	let fallbackHandler: MatchHandler<Input, Output> | null = null;
 
-	const runner = async (value: Input): Promise<Output> => {
+	let compiledChecks: Condition<any>[] = [];
+	let compiledHandlers: MatchHandler<any, Output>[] = [];
+
+	const compile = () => {
+		compiledChecks = [];
+		compiledHandlers = [];
 		for (const [check, handler] of cases) {
-			if (check(value)) return handler(value);
+			compiledChecks.push(check);
+			compiledHandlers.push(handler);
+		}
+	};
+
+	const runner = async (value: Input): Promise<Output> => {
+		const checks = compiledChecks;
+		const handlers = compiledHandlers;
+		const len = checks.length;
+		for (let j = 0; j < len; j++) {
+			if (checks[j](value)) return handlers[j](value);
 		}
 		if (fallbackHandler) return fallbackHandler(value);
 		throw new Error("No match found");
@@ -104,37 +119,42 @@ function createMatcherManager<Input, Output>(): MatcherManager<Input, Output> {
 		callback: Callback<Output> = NOOP,
 	): Promise<Output[]> => {
 		const length = list.length;
-		const results: Output[] = new Array(length);
+		const results = new Array<Output>(length);
+		let idx = 0;
+		let error: unknown = null;
 
-		let currentIndex = 0;
-		let running = 0;
+		const checks = compiledChecks;
+		const handlers = compiledHandlers;
+		const cLen = checks.length;
+		const fallback = fallbackHandler;
 
-		return new Promise((resolve, reject) => {
-			const next = () => {
-				while (running < concurrency && currentIndex < length) {
-					const index = currentIndex++;
-					const value = list[index];
-					running++;
+		const runOne = async (value: Input): Promise<Output> => {
+			for (let j = 0; j < cLen; j++) {
+				if (checks[j](value)) return handlers[j](value);
+			}
+			if (fallback) return fallback(value);
+			throw new Error("No match found");
+		};
 
-					Promise.resolve(runner(value))
-						.then((result) => {
-							results[index] = result;
-							callback(result, index);
-						})
-						.catch(reject)
-						.finally(() => {
-							running--;
-							if (currentIndex >= length && running === 0) {
-								resolve(results);
-							} else {
-								queueMicrotask(next); // 更快微任务调度
-							}
-						});
+		const worker = async () => {
+			while (idx < length && !error) {
+				const i = idx++;
+				try {
+					const result = await runOne(list[i]);
+					results[i] = result;
+					callback(result, i);
+				} catch (err) {
+					error = err;
 				}
-			};
+			}
+		};
 
-			next(); // 启动任务
-		});
+		const workers = new Array(Math.min(concurrency, length));
+		for (let i = 0; i < workers.length; i++) workers[i] = worker();
+		await Promise.all(workers);
+
+		if (error) throw error;
+		return results;
 	};
 
 	const api: MatcherManager<Input, Output> = {
@@ -142,6 +162,7 @@ function createMatcherManager<Input, Output>(): MatcherManager<Input, Output> {
 		fallbackHandler,
 		with<T>(cond: Condition<T>, handler: MatchHandOrValue<T, Output>) {
 			cases.set(cond, valueToFunc<T, Output>(handler));
+			compile();
 			return api;
 		},
 		with2(
@@ -154,6 +175,7 @@ function createMatcherManager<Input, Output>(): MatcherManager<Input, Output> {
 					: (v: Input) => v === to;
 			const is2 = is.to(t);
 			cases.set(is2, valueToFunc<Input, Output>(handler));
+			compile();
 			return api;
 		},
 		otherwise(handler: MatchHandOrValue<Input, Output>) {
@@ -174,6 +196,19 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 	const cases = new Map<Condition<any>, MatchHandler<any, Output>>();
 	let fallbackHandler: MatchHandler<Input, Output> | null = null;
 
+	// 预编译为数组，避免热循环中 Map 迭代器的开销
+	let compiledChecks: Condition<any>[] = [];
+	let compiledHandlers: MatchHandler<any, Output>[] = [];
+
+	const compile = () => {
+		compiledChecks = [];
+		compiledHandlers = [];
+		for (const [check, handler] of cases) {
+			compiledChecks.push(check);
+			compiledHandlers.push(handler);
+		}
+	};
+
 	const runner = (
 		value: Input,
 		noError: boolean = false,
@@ -182,11 +217,14 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 		| {
 				value?: Output;
 		  } => {
-		for (const [check, handler] of cases) {
-			if (check(value))
+		const checks = compiledChecks;
+		const handlers = compiledHandlers;
+		const len = checks.length;
+		for (let j = 0; j < len; j++) {
+			if (checks[j](value))
 				return noError
-					? ({ value: handler(value) as Output } as { value?: Output })
-					: (new Right(handler(value)) as Right<Output>);
+					? ({ value: handlers[j](value) as Output } as { value?: Output })
+					: (new Right(handlers[j](value)) as Right<Output>);
 		}
 		if (fallbackHandler) {
 			return noError
@@ -204,16 +242,20 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 		list: Input[],
 		callback: Callback<Output> = NOOP,
 	): Either<Error, Output[]> => {
+		const checks = compiledChecks;
+		const handlers = compiledHandlers;
+		const cLen = checks.length;
 		const len = list.length;
 		const results = new Array<Output>(len);
+		const fallback = fallbackHandler;
 
 		for (let i = 0; i < len; i++) {
 			const val = list[i];
 			let matched = false;
 
-			for (const [check, handler] of cases) {
-				if (check(val)) {
-					const result = handler(val);
+			for (let j = 0; j < cLen; j++) {
+				if (checks[j](val)) {
+					const result = handlers[j](val);
 					results[i] = result as Output;
 					callback(result as Output, i);
 					matched = true;
@@ -222,8 +264,8 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 			}
 
 			if (!matched) {
-				if (fallbackHandler) {
-					const result = fallbackHandler(val);
+				if (fallback) {
+					const result = fallback(val);
 					results[i] = result as Output;
 					callback(result as Output, i);
 				} else {
@@ -240,6 +282,7 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 		fallbackHandler,
 		with<T>(cond: Condition<T>, handler: MatchHandOrValue<T, Output>) {
 			cases.set(cond, valueToFunc<T, Output>(handler));
+			compile();
 			return api;
 		},
 		with2(
@@ -252,6 +295,7 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 					: (v: Input) => v === to;
 			const is2 = is.to(t);
 			cases.set(is2, valueToFunc<Input, Output>(handler));
+			compile();
 			return api;
 		},
 		otherwise(handler: MatchHandOrValue<Input, Output>) {
@@ -259,9 +303,12 @@ function createMatcherManagerSync<Input, Output>(): MatcherManagerSync<
 			return api;
 		},
 		unwrap: (value: Input): Either<null, Right<Output> | Right<undefined>> => {
-			for (const [check, handler] of cases) {
-				if (check(value))
-					return new Right(handler(value) as Output) as Either<
+			const checks = compiledChecks;
+			const handlers = compiledHandlers;
+			const len = checks.length;
+			for (let j = 0; j < len; j++) {
+				if (checks[j](value))
+					return new Right(handlers[j](value) as Output) as Either<
 						null,
 						Right<Output>
 					>;
@@ -296,9 +343,25 @@ function createMatcherManagerSyncNoEither<
 	const cases = new Map<Condition<any>, MatchHandler<any, Output>>();
 	let fallbackHandler: MatchHandler<Input, Output> | null = null;
 
-	const runner = (value: Input): Output | null => {
+	// 预编译为数组，避免热循环中 Map 迭代器的开销
+	let compiledChecks: Condition<any>[] = [];
+	let compiledHandlers: MatchHandler<any, Output>[] = [];
+
+	const compile = () => {
+		compiledChecks = [];
+		compiledHandlers = [];
 		for (const [check, handler] of cases) {
-			if (check(value)) return handler(value) as Output | null;
+			compiledChecks.push(check);
+			compiledHandlers.push(handler);
+		}
+	};
+
+	const runner = (value: Input): Output | null => {
+		const checks = compiledChecks;
+		const handlers = compiledHandlers;
+		const len = checks.length;
+		for (let j = 0; j < len; j++) {
+			if (checks[j](value)) return handlers[j](value) as Output | null;
 		}
 		if (fallbackHandler) {
 			return fallbackHandler(value) as Output | null;
@@ -310,16 +373,20 @@ function createMatcherManagerSyncNoEither<
 		list: Input[],
 		callback: Callback<Output> = NOOP,
 	): Output[] | null => {
+		const checks = compiledChecks;
+		const handlers = compiledHandlers;
+		const cLen = checks.length;
 		const len = list.length;
 		const results = new Array<Output>(len);
+		const fallback = fallbackHandler;
 
 		for (let i = 0; i < len; i++) {
 			const val = list[i];
 			let matched = false;
 
-			for (const [check, handler] of cases) {
-				if (check(val)) {
-					const result = handler(val);
+			for (let j = 0; j < cLen; j++) {
+				if (checks[j](val)) {
+					const result = handlers[j](val);
 					results[i] = result as Output;
 					callback(result as Output, i);
 					matched = true;
@@ -328,8 +395,8 @@ function createMatcherManagerSyncNoEither<
 			}
 
 			if (!matched) {
-				if (fallbackHandler) {
-					const result = fallbackHandler(val);
+				if (fallback) {
+					const result = fallback(val);
 					results[i] = result as Output;
 					callback(result as Output, i);
 				} else {
@@ -346,6 +413,7 @@ function createMatcherManagerSyncNoEither<
 		fallbackHandler,
 		with<T>(cond: Condition<T>, handler: MatchHandOrValue<T, Output>) {
 			cases.set(cond, valueToFunc<T, Output>(handler));
+			compile();
 			return api;
 		},
 		with2(
@@ -358,6 +426,7 @@ function createMatcherManagerSyncNoEither<
 					: (v: Input) => v === to;
 			const is2 = is.to(t);
 			cases.set(is2, valueToFunc<Input, Output>(handler));
+			compile();
 			return api;
 		},
 		otherwise(handler: MatchHandOrValue<Input, Output>) {
@@ -479,7 +548,7 @@ export function matchSyncNoEitherMemo<Input, Output>(
 		const result = matcher.run(value);
 
 		// 3) Handle error or extract result
-		if (!result) return null as unknown as Output;
+		if (result === null) return null as unknown as Output;
 
 		// 4) Cache result
 		if (isObject) {

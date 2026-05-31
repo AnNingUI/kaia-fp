@@ -163,8 +163,12 @@ export function curryWithDefault<
 		};
 
 		curried.exec = () => {
-			const filled = args.map((a) => (a === _ ? undefined : a));
-			return fn(...filled);
+			if (args.some((a) => a === _)) {
+				throw new Error(
+					"exec() called with unfilled placeholders. Provide all arguments before executing."
+				);
+			}
+			return fn(...args);
 		};
 
 		return curried;

@@ -1,4 +1,5 @@
 import { Either, Left, Right } from "../either";
+import { schema } from "./standardSchema";
 
 export type Predicate<T> = (val: any) => val is T;
 
@@ -135,7 +136,7 @@ type IsStringSelf = {
 			| {
 					turer: string[];
 					falser: string[];
-			  }
+			  },
 	): IsStringSelf;
 	test(r: RegExp): IsStringSelf;
 	includes(substr: string): IsStringSelf;
@@ -155,7 +156,7 @@ const isString = (): IsStringSelf => {
 				| {
 						turer: string[];
 						falser: string[];
-				  }
+				  },
 		) {
 			preds.push((v: string) => {
 				if (typeof to === "function") {
@@ -221,12 +222,12 @@ interface IsShape<T> extends WithInfer<T> {
 }
 function mergeShapes<
 	T extends Record<string, Predicate<any>>,
-	S extends Record<string, Predicate<any>>
+	S extends Record<string, Predicate<any>>,
 >(a: T, b: S): Record<string, Predicate<any>> {
 	return { ...a, ...b };
 }
 const isShape = <T extends Record<string, Predicate<any>>>(
-	shape: T
+	shape: T,
 ): IsShape<{
 	[K in keyof T]: T[K] extends Predicate<infer U> ? U : never;
 }> => {
@@ -247,7 +248,7 @@ const isShape = <T extends Record<string, Predicate<any>>>(
 
 	fn.extends = <S>(other: WithInfer<S>) => {
 		const otherShape = (other as any)._shape || {};
-		const mergedShape = mergeShapes(otherShape, shape);
+		const mergedShape = mergeShapes(shape, otherShape);
 		return isShape(mergedShape) as IsShape<Inferred & S>;
 	};
 
@@ -272,9 +273,9 @@ type IsLiteralSelf<T extends string | number | boolean | null | undefined> = {
 };
 
 const isLiteral = <T extends string | number | boolean | null | undefined>(
-	expected: T
+	expected: T,
 ): IsLiteralSelf<T> => {
-	const predicate = (val: any): val is T => val === expected;
+	const predicate = (val: any): val is T => Object.is(val, expected);
 
 	// 直接暴露 predicate 和 match 两种形式
 	predicate.match = predicate;
@@ -285,33 +286,33 @@ const isEither = <L, R>() => {
 	return {
 		shape: (
 			leftPred: ReturnType<typeof wrap<L>>,
-			rightPred: ReturnType<typeof wrap<R>>
+			rightPred: ReturnType<typeof wrap<R>>,
 		) =>
 			wrap<Either<L, R>>((val): val is Either<L, R> =>
 				val instanceof Left
 					? leftPred.match(val.value)
 					: val instanceof Right
-					? rightPred.match(val.value)
-					: false
+						? rightPred.match(val.value)
+						: false,
 			),
 
 		left: Object.assign(
 			(pred: ReturnType<typeof wrap<L>>) =>
 				wrap<Left<L>>(
-					(val): val is Left<L> => val instanceof Left && pred.match(val.value)
+					(val): val is Left<L> => val instanceof Left && pred.match(val.value),
 				),
 			// 修改这里：将 Left<unknown> 改为 Left<any>
-			wrap((val: unknown): val is Left<L> => val instanceof Left)
+			wrap((val: unknown): val is Left<L> => val instanceof Left),
 		),
 
 		right: Object.assign(
 			(pred: ReturnType<typeof wrap<R>>) =>
 				wrap<Right<R>>(
 					(val): val is Right<R> =>
-						val instanceof Right && pred.match(val.value)
+						val instanceof Right && pred.match(val.value),
 				),
 			// 修改这里：将 Right<unknown> 改为 Right<any>
-			wrap((val: unknown): val is Right<R> => val instanceof Right)
+			wrap((val: unknown): val is Right<R> => val instanceof Right),
 		),
 	};
 };
@@ -344,6 +345,7 @@ export interface IsTypes {
 	to: typeof isTo;
 	not: typeof not;
 	optional: typeof optional;
+	schema: typeof schema;
 }
 
 export const is: IsTypes = {
@@ -362,6 +364,7 @@ export const is: IsTypes = {
 	to: isTo,
 	not,
 	optional,
+	schema,
 };
 
 export type CreateTypeOf<F extends (...args: any[]) => any> = F extends (

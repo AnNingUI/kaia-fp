@@ -18,11 +18,15 @@ export class IO<A> implements HKT<"IO", A> {
 	flatMap<B>(f: (a: A) => IO<B>): IO<B> {
 		return new IO(() => f(this.run()).run());
 	}
+
+	ap<B>(fab: IO<(a: A) => B>): IO<B> {
+		return new IO(() => fab.run()(this.run()));
+	}
 }
 
 export const IOMonad: Monad<"IO"> = {
 	map: (fa, f) => fa.map(f),
 	of: IO.of,
-	ap: (fab, fa) => fab.flatMap((f: any) => fa.map(f)),
+	ap: (fab, fa) => fa.ap(fab),
 	flatMap: (fa, f) => fa.flatMap(f),
 };

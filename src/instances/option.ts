@@ -1,7 +1,6 @@
 import { HKT } from "../core/hkt";
 import { Monad } from "../core/typeClass";
 
-// export type Options<A> = Some<A> | A extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B> extends <A, B>(fa: Options<A>, f: (a: A) => B) => Options<B>one;
 export class Options<A> implements HKT<"Options", A> {
 	readonly _URI!: "Options";
 	readonly _A!: A;
@@ -46,12 +45,27 @@ export class Options<A> implements HKT<"Options", A> {
 		}
 	}
 
+	public map<B>(f: (a: NonNullable<A>) => B): Options<B> {
+		if (this.isSome()) {
+			return new Some(f(this.value!));
+		} else {
+			return None.of() as Options<B>;
+		}
+	}
+
 	public flatMap<B>(f: (a: NonNullable<A>) => Options<B>) {
 		if (this.isSome()) {
 			return f(this.value!);
 		} else {
 			return None.of() as Options<B>;
 		}
+	}
+
+	public ap<B>(fab: Options<(a: A) => B>): Options<B> {
+		if (this.isSome() && fab.isSome()) {
+			return new Some(fab.value!(this.value!));
+		}
+		return None.of() as Options<B>;
 	}
 }
 
@@ -61,6 +75,9 @@ export class Some<A> extends Options<A> implements HKT<"Options", A> {
 	readonly _tag = "Some";
 
 	constructor(public readonly value: A) {
+		if (value === null || value === undefined) {
+			throw new Error("Some cannot hold null or undefined; use None instead");
+		}
 		super(value);
 	}
 }
@@ -84,6 +101,12 @@ export class None extends Options<never> implements HKT<"Options", never> {
 		} else {
 			return this.INSTANCE as None;
 		}
+	}
+
+	public static fromNullable<A>(value: A | null | undefined): Options<NonNullable<A>> {
+		return value === null || value === undefined
+			? (None.of() as Options<NonNullable<A>>)
+			: new Some(value as NonNullable<A>);
 	}
 }
 

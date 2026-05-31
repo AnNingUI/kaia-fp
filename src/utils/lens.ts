@@ -10,6 +10,17 @@ export function lens<S, A>(
 	return { get, set };
 }
 
+export function over<S, A>(l: Lens<S, A>, f: (a: A) => A, s: S): S {
+	return l.set(f(l.get(s)), s);
+}
+
+export function compose<S, A, B>(outer: Lens<S, A>, inner: Lens<A, B>): Lens<S, B> {
+	return {
+		get: (s) => inner.get(outer.get(s)),
+		set: (b, s) => outer.set(inner.set(b, outer.get(s)), s),
+	};
+}
+
 export type Zipper<A> = {
 	left: A[];
 	focus: A;

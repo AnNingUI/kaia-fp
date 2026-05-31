@@ -19,19 +19,30 @@ export class AsyncResult<E, A> implements HKT<"AsyncResult", A> {
 
 	map<B>(f: (a: A) => B): AsyncResult<E, B> {
 		return new AsyncResult(() =>
-			this.run().then((res) => (res.isRight() ? new Right(f(res.value)) : res))
+			this.run()
+				.then((res) => (res.isRight() ? new Right(f(res.value)) : res))
+				.catch((e) => new Left(e as E))
 		);
 	}
 
 	// 修复点2：添加显式类型参数
 	flatMap<B>(f: (a: A) => AsyncResult<E, B>): AsyncResult<E, B> {
 		return new AsyncResult(() =>
-			this.run().then((res) => {
-				if (res.isRight()) {
-					return f(res.value).run();
-				}
-				return res as Left<E>;
-			})
+			this.run()
+				.then((res) => {
+					if (res.isRight()) {
+						return f(res.value).run();
+					}
+					return res as Left<E>;
+				})
+				.catch((e) => new Left(e as E))
+		);
+	}
+
+	// 从 Promise 构造，rejection 自动转为 Left
+	static fromPromise<A, E = unknown>(p: Promise<A>): AsyncResult<E, A> {
+		return new AsyncResult(() =>
+			p.then((a) => new Right(a)).catch((e) => new Left(e as E))
 		);
 	}
 }

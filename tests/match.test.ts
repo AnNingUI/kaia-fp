@@ -242,6 +242,31 @@ describe("模拟实际场景测试", () => {
 			console.log("匹配结果正确率：" + iss.length / numList.length);
 			expect(iss.length).toBe(numList.length);
 		});
+
+		it("100_0000随机大数据匹配判断性能测试 (NoEither)", () => {
+			const manager = matchSyncNoEither<number, string>();
+			manager
+				.with(is.number().gt(1000).match, (val) => `大于1000：${val}`)
+				.with(is.number().lt(10).match, (val) => `小于10：${val}`)
+				.otherwise(() => "默认数字");
+
+			const results: string[] = [];
+			manager.forEach(numList, (u) => {
+				results.push(u);
+			});
+			const iss: boolean[] = [];
+			results.forEach((result, i) => {
+				const u = numList[i];
+				if (
+					result ==
+					(u > 1000 ? `大于1000：${u}` : u < 10 ? `小于10：${u}` : "默认数字")
+				) {
+					iss.push(true);
+				}
+			});
+			console.log("匹配结果正确率(NoEither)：" + iss.length / numList.length);
+			expect(iss.length).toBe(numList.length);
+		});
 	});
 
 	describe("Tree Node Matching", () => {
