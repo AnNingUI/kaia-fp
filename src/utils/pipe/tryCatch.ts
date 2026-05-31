@@ -45,15 +45,9 @@ export function tryCatch<T extends any[], R, E, H = E>(
 	options: TryCatchOptions<E, H> = {}
 ): TryCatchReturn<T, R, H> {
 	const handle = (error: any): Result<never, H> => {
-		try {
-			const handled = options.onError?.(error) ?? (error as H);
-			if (options.rethrow)
-				throw handled instanceof Error ? handled : new Error(String(handled));
-			return { success: false, err: handled };
-		} catch (rethrown) {
-			if (options.rethrow) throw rethrown;
-			return { success: false, err: rethrown as H };
-		}
+		const handled = options.onError?.(error) ?? (error as H);
+		if (options.rethrow) throw handled;
+		return { success: false, err: handled };
 	};
 
 	return ((...args: T) => {
@@ -63,7 +57,11 @@ export function tryCatch<T extends any[], R, E, H = E>(
 			if (result instanceof Promise) {
 				return result.then(
 					(value) => ({ success: true, ok: value } as Result<R, H>),
-					(error) => handle(error)
+					(error) => {
+						const handled = options.onError?.(error) ?? (error as H);
+						if (options.rethrow) return Promise.reject(handled);
+						return { success: false, err: handled } as Result<R, H>;
+					}
 				) as Promise<Result<R, H>>;
 			}
 
@@ -71,7 +69,7 @@ export function tryCatch<T extends any[], R, E, H = E>(
 		} catch (error) {
 			return handle(error) as Result<R, H>;
 		}
-	}) as TryCatchReturn<T, R, H>; // 添加外层类型断言
+	}) as TryCatchReturn<T, R, H>;
 }
 
 export const Result = {
@@ -127,10 +125,15 @@ export const Result = {
 	async allSettled<T, E>(
 		arr: Promise<Result<T, E>>[]
 	): Promise<Result<T, E>[]> {
-		return Promise.all(arr);
+		const settled = await Promise.allSettled(arr);
+		return settled.map((r) =>
+			r.status === "fulfilled"
+				? r.value
+				: { success: false, err: r.reason as E }
+		);
 	},
 
-	async any<T, E>(arr: Promise<Result<T, E>>[]): Promise<Result<T, E>> {
+	async any<T, E>(arr: Promise<Result<T, E>>[]): Promise<Result<T, E | E[]>> {
 		const errors: E[] = [];
 		for (const p of arr) {
 			const res = await p;
@@ -139,7 +142,7 @@ export const Result = {
 		}
 		return {
 			success: false,
-			err: errors.length === 1 ? errors[0] : (errors as any),
+			err: errors.length === 1 ? errors[0] : errors,
 		};
 	},
 

@@ -161,8 +161,8 @@ describe("模拟实际场景测试", () => {
 			const lazy = LazyArray.fromArray(source)
 				.map((n) => n * 2) // [2, 4, 6]
 				.flatMap((n) => LazyArray.fromArray([n, n + 1])) // [2,3,4,5,6,7]
-				.filter((n) => n % 2 === 0) // [2, 4, 6]
-				.forEach((n) => console.log(`[Lazy] ${n}`)); // 2, 4, 6
+				.filter((n) => n % 2 === 0); // [2, 4, 6]
+
 			console.timeEnd("LazyArray Performance");
 
 			// 性能检测：普通数组操作
@@ -174,25 +174,35 @@ describe("模拟实际场景测试", () => {
 				.forEach((n) => console.log(n));
 			console.timeEnd("Native Array Performance");
 
-			// 验证结果
+			// 验证结果：toArray 和惰性 forEach 副作用
 			console.time("LazyArray Performance - toArray");
 			const arr = lazy.toArray();
 			console.timeEnd("LazyArray Performance - toArray");
 			expect(arr).toEqual([2, 4, 6]);
+
+			// forEach 副作用 + 链式：原始 lazy 不受影响
+			const effects: number[] = [];
+			const collected = lazy.forEach((n) => effects.push(n)).toArray();
+			expect(collected).toEqual([2, 4, 6]);
+			expect(effects).toEqual([2, 4, 6]);
 		});
 
-		it("should support LazyArray.of", () => {
-			const single = LazyArray.of(42);
-			const result = single.run();
-			expect(result.done).toBe(false);
-			expect(result.value).toBe(42);
-			expect(single.run().done).toBe(true); // 第二次已经耗尽
+		it("should be pure: toArray/map/filter do not consume the LazyArray", () => {
+			const source = LazyArray.fromArray([10, 20, 30]);
+
+			expect(source.toArray()).toEqual([10, 20, 30]);
+			// 纯函数：多次 toArray 返回相同结果，不会变空
+			expect(source.toArray()).toEqual([10, 20, 30]);
+			expect(source.map((x) => x + 1).toArray()).toEqual([11, 21, 31]);
+			// map 后原 source 仍完好
+			expect(source.toArray()).toEqual([10, 20, 30]);
 		});
 
-		it("should return done after all values are consumed", () => {
-			const arr = LazyArray.fromArray([10]);
-			arr.run(); // consume one
-			expect(arr.run().done).toBe(true); // should be done
+		it("should support head, take, drop", () => {
+			const la = LazyArray.fromArray([10, 20, 30, 40]);
+			expect(la.head()).toBe(10);
+			expect(la.take(2).toArray()).toEqual([10, 20]);
+			expect(la.drop(2).toArray()).toEqual([30, 40]);
 		});
 	});
 });

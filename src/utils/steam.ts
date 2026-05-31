@@ -501,72 +501,36 @@ export class Stream<T> {
 		);
 	}
 
-	// 节流操作
-	throttle(timeMs: number): Stream<T> {
+	// 节流操作：每 n 个元素取第一个
+	throttle(n: number): Stream<T> {
+		if (n <= 0) throw new Error("throttle count must be positive");
 		return new Stream(
 			function* (this: Stream<T>) {
-				const iter = this.iterate();
-				let lastTime = 0;
-				let pending: T | null = null;
-
-				while (true) {
-					const { value, done } = iter.next();
-					if (done) {
-						if (pending !== null) yield pending;
-						break;
-					}
-
-					pending = value;
-					const now = Date.now();
-					if (now - lastTime >= timeMs) {
-						yield value;
-						lastTime = now;
-						pending = null;
-					}
+				let count = 0;
+				for (const item of this.iterate()) {
+					if (count % n === 0) yield item;
+					count++;
 				}
 			}.bind(this)
 		);
 	}
 
-	// 防抖操作
-	debounce(timeMs: number): Stream<T> {
+	// 防抖操作：每 n 个元素取最后一个
+	debounce(n: number): Stream<T> {
+		if (n <= 0) throw new Error("debounce count must be positive");
 		return new Stream(
 			function* (this: Stream<T>) {
-				const iter = this.iterate();
-				let timeout: NodeJS.Timeout | null = null;
-				let pending: T | null = null;
-				let isDone = false;
-
-				const triggerYield = function* () {
-					if (pending !== null) {
+				let count = 0;
+				let pending: T | undefined;
+				for (const item of this.iterate()) {
+					pending = item;
+					count++;
+					if (count === n) {
 						yield pending;
-						pending = null;
+						count = 0;
 					}
-				};
-
-				while (true) {
-					const { value, done } = iter.next();
-					if (done) {
-						isDone = true;
-						if (pending !== null) yield pending;
-						break;
-					}
-
-					pending = value;
-
-					if (timeout) clearTimeout(timeout);
-
-					timeout = setTimeout(() => {
-						triggerYield();
-					}, timeMs);
-
-					// 模拟异步等待，防止频繁触发
-					const wait = new Promise<void>((resolve) => {
-						timeout = setTimeout(resolve, 0);
-					});
-
-					wait.then(() => {});
 				}
+				if (count > 0 && pending !== undefined) yield pending;
 			}.bind(this)
 		);
 	}
@@ -1436,52 +1400,24 @@ export class AsyncStream<T> {
 		return new AsyncStream(
 			async function* (this: AsyncStream<T>) {
 				const iter = this.iterate();
-				const inflight: Array<Promise<Y>> = [];
-				const results: Y[] = [];
+				const inflight = new Map<Promise<Y>, boolean>();
 
-				// 收集处理结果
-				const capture = (promise: Promise<Y>) => {
-					promise
-						.then((value) => {
-							results.push(value);
-						})
-						.catch((error) => {
-							(this as any).handleError?.(error);
-						});
+				const addTask = (p: Promise<Y>) => {
+					p.then(() => inflight.delete(p));
+					inflight.set(p, true);
 				};
 
-				// 控制并发
 				while (true) {
-					while (inflight.length < concurrency) {
+					while (inflight.size < concurrency) {
 						const { value, done } = await iter.next();
 						if (done) break;
-						const task = f(value);
-						inflight.push(task);
-						capture(task);
+						addTask(f(value));
 					}
 
-					if (inflight.length === 0) break;
+					if (inflight.size === 0) break;
 
-					// 等待至少一个任务完成
-					await Promise.race(inflight);
-
-					// 清除已完成的任务
-					const newInflight: Array<Promise<Y>> = [];
-					for (const p of inflight) {
-						const settled = p.finally(() => {});
-						if (settled !== p) {
-							newInflight.push(p);
-						}
-					}
-					inflight.length = 0;
-					inflight.push(...newInflight);
+					yield await Promise.race(inflight.keys());
 				}
-
-				// 等待剩余任务完成
-				await Promise.allSettled(inflight);
-
-				// 最终产出所有结果
-				yield* results;
 			}.bind(this)
 		);
 	}

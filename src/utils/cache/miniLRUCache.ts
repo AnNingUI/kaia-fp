@@ -22,6 +22,9 @@ export class MiniLRUCache<K, V> {
 	private readonly sweepWorker?: LRUCacheWorker<K, V>;
 
 	constructor(private readonly max: number, options: CacheOptions = {}) {
+		if (max <= 0) {
+			throw new Error(`MiniLRUCache max must be positive, got ${max}`);
+		}
 		this.ttl = options.ttl ?? 0;
 
 		if (this.ttl > 0 && options.autoSweep) {

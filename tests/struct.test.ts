@@ -1,3 +1,4 @@
+import { describe, it } from "vitest";
 import {
 	FuncBox,
 	Impl,
@@ -5,8 +6,7 @@ import {
 	Struct,
 	StructValue,
 	WithStruct,
-} from "utils/Struct";
-import { describe, it } from "vitest";
+} from "../src/utils/Struct";
 
 describe("结构体测试", () => {
 	it("1", () => {
@@ -22,7 +22,7 @@ describe("结构体测试", () => {
 				setBio: (self, bio: string) => {
 					self.bio = bio;
 				},
-			}
+			},
 		);
 
 		// 示例代码测试
@@ -111,7 +111,7 @@ describe("结构体测试", () => {
 				setEmail: (self, id: number) => {
 					self.email = `user${id}@example.com`;
 				},
-			}
+			},
 		);
 
 		const user2 = User2.new({
@@ -174,7 +174,7 @@ describe("结构体测试", () => {
 					userInfo: as_user.getInfo(),
 					petName: as_pet.name,
 				};
-			}
+			},
 		);
 		console.log("Multi return value:", multiResult);
 	});

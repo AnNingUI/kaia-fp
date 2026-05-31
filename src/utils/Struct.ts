@@ -78,10 +78,10 @@ type StructInstance<
 	): MethodReturnType<M[K]>;
 };
 
-// 存储全局方法实现
-const globalMethodImplementations: Record<string, any> = {};
+// 存储每个结构体类型自己的方法实现（按类型隔离）
+const structMethodMap = new WeakMap<object, Record<string, any>>();
 
-// 存储当前作用域的方法实现
+// 存储当前作用域的方法实现（FuncBox/MultiFuncBox 专用）
 const currentScopeImplementations: Record<string, any>[] = [];
 type StructNew<
 	T extends StructDefinition,
@@ -97,7 +97,7 @@ type StructType<
 };
 
 class StructClass<T extends StructDefinition> {
-	constructor(init: Partial<StructValue<T>>, definition: T) {
+	constructor(init: Partial<StructValue<T>>, definition: T, private structType?: object) {
 		for (const key in definition) {
 			if (init !== null && Object.prototype.hasOwnProperty.call(init, key)) {
 				(this as any)[key] = init[key];
@@ -146,7 +146,7 @@ class StructClass<T extends StructDefinition> {
 		return null;
 	}
 
-	// 获取方法（检查当前作用域和全局作用域）
+	// 获取方法（检查当前作用域和结构体类型作用域）
 	private getMethod(methodName: string) {
 		// 先检查当前作用域
 		for (let i = currentScopeImplementations.length - 1; i >= 0; i--) {
@@ -155,9 +155,12 @@ class StructClass<T extends StructDefinition> {
 			}
 		}
 
-		// 再检查全局作用域
-		if (globalMethodImplementations[methodName]) {
-			return globalMethodImplementations[methodName];
+		// 再检查结构体类型的方法
+		if (this.structType) {
+			const methods = structMethodMap.get(this.structType);
+			if (methods && methods[methodName]) {
+				return methods[methodName];
+			}
 		}
 
 		return undefined;
@@ -201,10 +204,13 @@ class StructClass<T extends StructDefinition> {
 			Object.keys(scope).forEach((method) => methods.add(method));
 		}
 
-		// 收集全局作用域的方法
-		Object.keys(globalMethodImplementations).forEach((method) =>
-			methods.add(method)
-		);
+		// 收集结构体类型的方法
+		if (this.structType) {
+			const typeMethods = structMethodMap.get(this.structType);
+			if (typeMethods) {
+				Object.keys(typeMethods).forEach((method) => methods.add(method));
+			}
+		}
 
 		return Array.from(methods);
 	}
@@ -212,13 +218,16 @@ class StructClass<T extends StructDefinition> {
 export function Struct<T extends StructDefinition>(
 	definition: T
 ): StructType<T> {
-	// 定义 new 方法
+	// 定义 new 方法，用 struct 自身作为类型标识（WeakMap key）
+	const structType = {} as object;
 	const structInstance = {
 		["$KAIA_TYPE$"]: "Struct",
 		new: (init: Partial<StructValue<T>>) =>
-			new StructClass(init, definition) as unknown as StructInstance<T>,
+			new StructClass(init, definition, structType) as unknown as StructInstance<T>,
 		prototype: StructClass.prototype,
 	};
+	// 让 WithStruct 能通过 struct 找到 structType 对应的方法
+	(structInstance as any)._structType = structType;
 	return structInstance as unknown as StructType<T>;
 }
 
@@ -412,17 +421,9 @@ export function WithStruct<
 >(definition: T, methods: M): StructType<T, M> {
 	const struct = Struct(definition);
 
-	// 将方法添加到全局作用域
-	for (const methodName in methods) {
-		globalMethodImplementations[methodName] = methods[methodName];
-	}
-
-	// 将方法添加到结构体原型
-	for (const methodName in methods) {
-		(struct.prototype as any)[methodName] = function (...args: any[]) {
-			return this.callMethod(methodName, ...args);
-		};
-	}
+	// 将方法存储到结构体类型的 WeakMap 中
+	const key = (struct as any)._structType || struct;
+	structMethodMap.set(key, methods as Record<string, any>);
 
 	return struct as StructType<T, M>;
 }
