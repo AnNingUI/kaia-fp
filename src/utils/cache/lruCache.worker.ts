@@ -6,14 +6,14 @@ export class LRUCacheWorker<K, V> {
 
 	constructor(
 		private readonly cache: MiniLRUCache<K, V>,
-		private interval = 60000
+		private interval = 60000,
 	) {}
 
-	start() {
+	start(): void {
 		if (this.worker) return;
 
 		this.worker = new Worker(
-			new URL("./lruCache.worker.impl.ts", import.meta.url)
+			new URL("./lruCache.worker.impl.ts", import.meta.url),
 		);
 		this.worker.postMessage({ type: "start", interval: this.interval });
 
@@ -24,14 +24,14 @@ export class LRUCacheWorker<K, V> {
 		};
 	}
 
-	stop() {
+	stop(): void {
 		if (this.worker) {
 			this.worker.terminate();
 			this.worker = null;
 		}
 	}
 
-	restart(newInterval?: number) {
+	restart(newInterval?: number): void {
 		this.stop();
 		if (newInterval !== undefined) this.interval = newInterval;
 		this.start();

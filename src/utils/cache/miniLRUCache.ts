@@ -21,7 +21,10 @@ export class MiniLRUCache<K, V> {
 	private readonly ttl: number;
 	private readonly sweepWorker?: LRUCacheWorker<K, V>;
 
-	constructor(private readonly max: number, options: CacheOptions = {}) {
+	constructor(
+		private readonly max: number,
+		options: CacheOptions = {},
+	) {
 		if (max <= 0) {
 			throw new Error(`MiniLRUCache max must be positive, got ${max}`);
 		}
@@ -30,13 +33,13 @@ export class MiniLRUCache<K, V> {
 		if (this.ttl > 0 && options.autoSweep) {
 			this.sweepWorker = new LRUCacheWorker(
 				this,
-				options.sweepInterval ?? 60000
+				options.sweepInterval ?? 60000,
 			);
 			this.sweepWorker.start();
 		}
 	}
 
-	get(key: K, now = Date.now()): V | undefined {
+	get(key: K, now: number = Date.now()): V | undefined {
 		const node = this.map.get(key);
 		if (!node) {
 			this.misses++;
@@ -54,7 +57,7 @@ export class MiniLRUCache<K, V> {
 		return node.value;
 	}
 
-	set(key: K, value: V, now = Date.now()): void {
+	set(key: K, value: V, now: number = Date.now()): void {
 		const existing = this.map.get(key);
 
 		if (existing) {
@@ -76,7 +79,7 @@ export class MiniLRUCache<K, V> {
 		if (node) this.removeInternal(node);
 	}
 
-	has(key: K, now = Date.now()): boolean {
+	has(key: K, now: number = Date.now()): boolean {
 		const node = this.map.get(key);
 		if (!node) return false;
 
@@ -106,7 +109,7 @@ export class MiniLRUCache<K, V> {
 	}
 
 	/** 主动清理过期节点 */
-	sweepExpired(now = Date.now()): void {
+	sweepExpired(now: number = Date.now()): void {
 		if (this.ttl <= 0) return;
 
 		let node = this.tail;

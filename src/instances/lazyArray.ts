@@ -54,7 +54,7 @@ export class LazyArray<A> implements HKT<"LazyArray", A> {
 	}
 
 	/** 立即消费：对每个元素执行副作用。 */
-	applyEach<O>(f: (c: A) => O) {
+	applyEach<O>(f: (c: A) => O): void {
 		for (const item of this) {
 			f(item);
 		}

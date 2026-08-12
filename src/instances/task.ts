@@ -1,3 +1,4 @@
+import { Monad } from "core";
 import { HKT } from "../core/hkt";
 import { makeMonad } from "../core/utils";
 
@@ -37,7 +38,7 @@ export class Task<A> implements HKT<"Task", A> {
 
 	ap<B>(fab: Task<(a: A) => B>): Task<B> {
 		return new Task(() =>
-			Promise.all([fab.run(), this.run()]).then(([f, a]) => f(a))
+			Promise.all([fab.run(), this.run()]).then(([f, a]) => f(a)),
 		);
 	}
 
@@ -52,9 +53,9 @@ export class Task<A> implements HKT<"Task", A> {
 	}
 }
 
-export const TaskMonad = makeMonad(
+export const TaskMonad: Monad<"Task"> = makeMonad(
 	"Task",
 	Task,
 	Task.of,
-	<A, B>(fab: Task<(a: A) => B>, fa: Task<A>) => fa.ap(fab)
+	<A, B>(fab: Task<(a: A) => B>, fa: Task<A>) => fa.ap(fab),
 );

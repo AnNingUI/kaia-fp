@@ -1,4 +1,5 @@
 // src/instances/asyncResult.ts
+import { Monad } from "core";
 import { HKT } from "../core/hkt";
 import { makeMonad } from "../core/utils";
 import { Either, Left, Right } from "../utils/either";
@@ -21,7 +22,7 @@ export class AsyncResult<E, A> implements HKT<"AsyncResult", A> {
 		return new AsyncResult(() =>
 			this.run()
 				.then((res) => (res.isRight() ? new Right(f(res.value)) : res))
-				.catch((e) => new Left(e as E))
+				.catch((e) => new Left(e as E)),
 		);
 	}
 
@@ -35,21 +36,21 @@ export class AsyncResult<E, A> implements HKT<"AsyncResult", A> {
 					}
 					return res as Left<E>;
 				})
-				.catch((e) => new Left(e as E))
+				.catch((e) => new Left(e as E)),
 		);
 	}
 
 	// 从 Promise 构造，rejection 自动转为 Left
 	static fromPromise<A, E = unknown>(p: Promise<A>): AsyncResult<E, A> {
 		return new AsyncResult(() =>
-			p.then((a) => new Right(a)).catch((e) => new Left(e as E))
+			p.then((a) => new Right(a)).catch((e) => new Left(e as E)),
 		);
 	}
 }
 
 // 修复点3：修正Monad实例类型
-export const AsyncResultMonad = makeMonad(
+export const AsyncResultMonad: Monad<"AsyncResult"> = makeMonad(
 	"AsyncResult",
 	AsyncResult,
-	AsyncResult.of
+	AsyncResult.of,
 );

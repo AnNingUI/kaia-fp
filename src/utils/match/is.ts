@@ -282,7 +282,15 @@ const isLiteral = <T extends string | number | boolean | null | undefined>(
 
 	return predicate;
 };
-const isEither = <L, R>() => {
+const isEither = <L, R>(): {
+	shape: (
+		leftPred: Wrap<L>,
+		rightPred: ReturnType<typeof wrap<R>>,
+	) => Wrap<Either<L, R>>;
+	left: ((pred: ReturnType<typeof wrap<L>>) => Wrap<Left<L>>) & Wrap<Left<L>>;
+	right: ((pred: ReturnType<typeof wrap<R>>) => Wrap<Right<R>>) &
+		Wrap<Right<R>>;
+} => {
 	return {
 		shape: (
 			leftPred: ReturnType<typeof wrap<L>>,
@@ -317,14 +325,19 @@ const isEither = <L, R>() => {
 	};
 };
 
-const isClazz = <T>(ctor: { new (...args: any[]): T }) => {
+const isClazz = <T>(ctor: {
+	new (...args: any[]): T;
+}): {
+	(val: unknown): val is T;
+	match: Predicate<T>;
+} => {
 	const u = (val: unknown): val is T => val instanceof ctor;
 	u.match = u;
 	return u;
 };
 
 // boolean 布尔匹配 转 is
-const isTo = <T>(to: (v: T) => boolean) => {
+const isTo = <T>(to: (v: T) => boolean): ((val: unknown) => val is T) => {
 	const u = (val: unknown): val is T => to(val as T);
 	return u;
 };

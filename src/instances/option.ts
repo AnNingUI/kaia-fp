@@ -8,11 +8,11 @@ export class Options<A> implements HKT<"Options", A> {
 
 	constructor(public readonly value: A | null) {}
 
-	public isNone() {
+	public isNone(): boolean {
 		return this.value === null && this instanceof None && this._tag === "None";
 	}
 
-	public isSome() {
+	public isSome(): boolean {
 		return this.value !== null && this instanceof Some && this._tag === "Some";
 	}
 
@@ -20,7 +20,7 @@ export class Options<A> implements HKT<"Options", A> {
 		return this.isNone() ? new Some(value) : this;
 	}
 
-	public get() {
+	public get(): A & ({} | undefined) {
 		if (this.value === null) {
 			throw new Error("Option.get called on None");
 		}
@@ -53,7 +53,7 @@ export class Options<A> implements HKT<"Options", A> {
 		}
 	}
 
-	public flatMap<B>(f: (a: NonNullable<A>) => Options<B>) {
+	public flatMap<B>(f: (a: NonNullable<A>) => Options<B>): Options<B> {
 		if (this.isSome()) {
 			return f(this.value!);
 		} else {
@@ -103,7 +103,9 @@ export class None extends Options<never> implements HKT<"Options", never> {
 		}
 	}
 
-	public static fromNullable<A>(value: A | null | undefined): Options<NonNullable<A>> {
+	public static fromNullable<A>(
+		value: A | null | undefined,
+	): Options<NonNullable<A>> {
 		return value === null || value === undefined
 			? (None.of() as Options<NonNullable<A>>)
 			: new Some(value as NonNullable<A>);
@@ -135,4 +137,6 @@ export type Maybe<T> = Options<T>;
 /**
  * @deprecated use `OptionMonad` instead
  */
-export const MaybeMonad = OptionMonad;
+export const MaybeMonad: {
+	none: () => None;
+} & Monad<"Options"> = OptionMonad;

@@ -444,7 +444,7 @@ function createMatcherManagerSyncNoEither<
 	return api;
 }
 
-export function match<Input, Output>() {
+export function match<Input, Output>(): MatcherManager<Input, Output> {
 	const manager = createMatcherManager<Input, Output>();
 	return manager;
 }
@@ -569,10 +569,7 @@ export function matchSyncMemo<Input, Output>(
 	let fn!: (value: Input) => Output;
 
 	// Pre-construct matcher to avoid rebuilding on each call
-	const matcher = builder(
-		(v: Input) => fn(v),
-		matchSync<Input, Output>(),
-	);
+	const matcher = builder((v: Input) => fn(v), matchSync<Input, Output>());
 
 	const cache = options.useLRU
 		? new MiniLRUCache<Input, Output>(options.maxSize!, {
@@ -701,4 +698,8 @@ export function matchAsyncMemo<Input, Output>(
 	return fn;
 }
 
-export { createMatcherManager, createMatcherManagerSync, createMatcherManagerSyncNoEither };
+export {
+	createMatcherManager,
+	createMatcherManagerSync,
+	createMatcherManagerSyncNoEither,
+};

@@ -1,12 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { pipe, pipeAsync } from "../src/utils/pipe/pipe";
-import { tap, clamp, between } from "../src/utils/combinators";
+import { describe, expect, it } from "vitest";
+import { between, clamp, tap } from "../src/utils/combinators";
+import { pipe, pipeAsync } from "../src/utils/pipe/pipe-v";
 
 describe("pipe .extends()", () => {
 	it("基本可调用 — pipe 结果仍然是函数", () => {
 		const add1 = (n: number) => n + 1;
-		const double = (n: number) => n * 2;
-		const result = pipe(add1, double);
+		const result = pipe(add1, (n) => n * 2);
 		expect(result(3)).toBe(8); // (3+1)*2
 	});
 
@@ -57,23 +56,17 @@ describe("pipe .extends()", () => {
 	});
 
 	it("point-free extends — clamp + between", () => {
-		const normalize = pipe(
-			clamp(0, 100),
-		).extends(
-			between(0, 50),
-		);
+		const normalize = pipe(clamp(0, 100)).extends(between(0, 50));
 
-		expect(normalize(150)).toBe(false);  // clamp→100, between(0,50)→false
-		expect(normalize(30)).toBe(true);     // clamp→30, between(0,50)→true
-		expect(normalize(-5)).toBe(true);     // clamp→0, between(0,50)→true
+		expect(normalize(150)).toBe(false); // clamp→100, between(0,50)→false
+		expect(normalize(30)).toBe(true); // clamp→30, between(0,50)→true
+		expect(normalize(-5)).toBe(true); // clamp→0, between(0,50)→true
 	});
 
 	it("extends + tap 日志", () => {
 		const log: string[] = [];
 
-		const base = pipe(
-			(n: number) => n * 2,
-		);
+		const base = pipe((n: number) => n * 2);
 
 		const extended = base.extends(
 			tap((n: number) => log.push(`doubled: ${n}`)),
@@ -88,9 +81,7 @@ describe("pipe .extends()", () => {
 	});
 
 	it("多次链式 extends 的结果正确性", () => {
-		const result = pipe(
-			(s: string) => s.trim(),
-		)
+		const result = pipe((s: string) => s.trim())
 			.extends((s: string) => s.toLowerCase())
 			.extends((s: string) => s.split(""))
 			.extends((arr: string[]) => arr.filter((c) => c !== " "))
@@ -122,16 +113,12 @@ describe("pipeAsync .extends()", () => {
 			async (n: number) => n + 1,
 			(n: number) => n * 2,
 		);
-		const extended = base.extends(
-			async (n: number) => -n,
-		);
+		const extended = base.extends(async (n: number) => -n);
 		expect(await extended(3)).toBe(-8);
 	});
 
 	it("extends 多步", async () => {
-		const base = pipeAsync(
-			async (n: number) => n + 1,
-		);
+		const base = pipeAsync(async (n: number) => n + 1);
 		const extended = base.extends(
 			(n: number) => n * 2,
 			async (n: number) => -n,
@@ -141,9 +128,7 @@ describe("pipeAsync .extends()", () => {
 	});
 
 	it("链式 extends", async () => {
-		const result = pipeAsync(
-			async (n: number) => n + 1,
-		)
+		const result = pipeAsync(async (n: number) => n + 1)
 			.extends((n: number) => n * 2)
 			.extends(async (n: number) => -n);
 
@@ -172,9 +157,7 @@ describe("pipeAsync .extends()", () => {
 	});
 
 	it("中间类型 + extends", async () => {
-		const result = pipeAsync(
-			async (s: string) => s.trim(),
-		)
+		const result = pipeAsync(async (s: string) => s.trim())
 			.extends((s: string) => s.split(" "))
 			.extends(async (arr: string[]) => arr.length);
 

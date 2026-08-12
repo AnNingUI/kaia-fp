@@ -1,10 +1,10 @@
-export const _ = Symbol("_");
+export const _: unique symbol = Symbol("_");
 export type Placeholder = typeof _;
 type IsPlaceholder<T> = T extends typeof _ ? true : false;
 
 type DropPlaceholders<
 	Args extends any[],
-	Provided extends any[]
+	Provided extends any[],
 > = Args extends [infer A, ...infer ARest]
 	? Provided extends [infer P, ...infer PRest]
 		? IsPlaceholder<P> extends true
@@ -20,7 +20,7 @@ type PromiseDE<T, U> = T extends Promise<unknown> ? Promise<U> : U;
 
 type CurriedFunction<Args extends any[], R> = <
 	OtherReturn = R,
-	T extends any[] = Args
+	T extends any[] = Args,
 >(
 	...args: T
 ) => DropPlaceholders<Args, T> extends infer RestArgs
@@ -80,7 +80,7 @@ function countNonPlaceholder(args: any[]): number {
 export function curry<
 	F extends (...args: any[]) => any,
 	Args extends any[] = Parameters<F>,
-	R = ReturnType<F>
+	R = ReturnType<F>,
 >(fn: F): CurriedFunction<Args, R> {
 	const arity = fn.length;
 
@@ -105,7 +105,7 @@ export function curry<
  * New scope per call, requires `.exec()`.
  */
 export function curryVariadic<TArgs extends any[], R>(
-	fn: (...args: TArgs) => R
+	fn: (...args: TArgs) => R,
 ): CurriedVariadic<TArgs, R> {
 	function build(args: TArgs): CurriedVariadic<TArgs, R> {
 		const curried = (...next: TArgs) =>
@@ -123,7 +123,7 @@ export function curryVariadic<TArgs extends any[], R>(
 function mergeArgsWithDefault(
 	oldArgs: any[],
 	newArgs: any[],
-	placeholder = _
+	placeholder = _,
 ): any[] {
 	const result = oldArgs.slice();
 	let newIndex = 0;
@@ -152,7 +152,7 @@ function initArgs(length: number, placeholder: any = _): any[] {
 export function curryWithDefault<
 	F extends (...args: any[]) => any,
 	Args extends any[] = Parameters<F>,
-	R = ReturnType<F>
+	R = ReturnType<F>,
 >(fn: F): CurriedWithDefault<Args, R> {
 	const total = fn.length;
 
@@ -165,7 +165,7 @@ export function curryWithDefault<
 		curried.exec = () => {
 			if (args.some((a) => a === _)) {
 				throw new Error(
-					"exec() called with unfilled placeholders. Provide all arguments before executing."
+					"exec() called with unfilled placeholders. Provide all arguments before executing.",
 				);
 			}
 			return fn(...args);

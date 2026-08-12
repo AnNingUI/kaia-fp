@@ -101,11 +101,13 @@ export class Right<R> extends EitherBase<never, R> {
 		super();
 	}
 
-	public get() {
+	public get(): R {
 		return this.value;
 	}
 
-	public to<B>(t: (v: R) => B | Promise<B> | void | Promise<void>) {
+	public to<B>(
+		t: (v: R) => B | Promise<B> | void | Promise<void>,
+	): void | B | Promise<void> | Promise<B> {
 		return t(this.value);
 	}
 
@@ -119,7 +121,9 @@ export class Right<R> extends EitherBase<never, R> {
 }
 
 /** Convert a nullable value to Either. null/undefined → Left(error), otherwise → Right(value). */
-export function fromNullable<E, A>(error: E): (value: A | null | undefined) => Either<E, NonNullable<A>> {
+export function fromNullable<E, A>(
+	error: E,
+): (value: A | null | undefined) => Either<E, NonNullable<A>> {
 	return (value) =>
 		value === null || value === undefined
 			? new Left(error)

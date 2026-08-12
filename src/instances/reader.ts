@@ -1,3 +1,4 @@
+import { Monad } from "core";
 import { HKT } from "../core/hkt";
 import { makeMonad } from "../core/utils";
 
@@ -28,14 +29,16 @@ export class Reader<R, A> implements HKT<"Reader", A> {
 	}
 }
 
-export const ReaderMonad = makeMonad("Reader", Reader, Reader.of, (fab, fa) =>
-	fa.ap(fab as any)
+export const ReaderMonad: Monad<"Reader"> = makeMonad(
+	"Reader",
+	Reader,
+	Reader.of,
+	(fab, fa) => fa.ap(fab as any),
 );
 
-
 export function ask<R>(): Reader<R, R> {
-  return new Reader((r) => r);
+	return new Reader((r) => r);
 }
 export function asks<R, B>(f: (r: R) => B): Reader<R, B> {
-  return new Reader((r) => f(r));
+	return new Reader((r) => f(r));
 }

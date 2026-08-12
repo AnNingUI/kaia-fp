@@ -30,7 +30,7 @@ export class NodePool<K, V> {
 		return new Node(key, value, createdAt);
 	}
 
-	release(node: Node<K, V>) {
+	release(node: Node<K, V>): void {
 		// 清理避免内存泄漏
 		(node.key as any) = null;
 		(node.value as any) = null;
@@ -40,7 +40,7 @@ export class NodePool<K, V> {
 		this.pool.push(node);
 	}
 
-	clear() {
+	clear(): void {
 		this.pool.length = 0;
 	}
 }

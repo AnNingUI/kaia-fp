@@ -6,22 +6,22 @@ type StructDefinition = Record<string, any>;
 type ConstructorToType<T> = T extends StringConstructor
 	? string
 	: T extends NumberConstructor
-	? number
-	: T extends BooleanConstructor
-	? boolean
-	: T extends ArrayConstructor
-	? unknown[]
-	: T extends StructType<infer R, infer M>
-	? StructInstance<R, M>
-	: T extends ObjectConstructor
-	? object
-	: T extends FunctionConstructor
-	? (...args: unknown[]) => unknown
-	: T extends { new (...args: unknown[]): infer R }
-	? R // 处理类构造器
-	: T extends StructDefinition
-	? StructValue<T> // 处理结构体类型
-	: never;
+		? number
+		: T extends BooleanConstructor
+			? boolean
+			: T extends ArrayConstructor
+				? unknown[]
+				: T extends StructType<infer R, infer M>
+					? StructInstance<R, M>
+					: T extends ObjectConstructor
+						? object
+						: T extends FunctionConstructor
+							? (...args: unknown[]) => unknown
+							: T extends { new (...args: unknown[]): infer R }
+								? R // 处理类构造器
+								: T extends StructDefinition
+									? StructValue<T> // 处理结构体类型
+									: never;
 
 // 修正 StructValue 类型定义
 export type StructValue<T extends StructDefinition> = {
@@ -49,22 +49,23 @@ type MethodMap<T extends StructValue<any>> = {
 };
 
 // 提取方法的返回类型
-type MethodReturnType<M> = M extends DirectMethod<any, any, infer R>
-	? R
-	: M extends FactoryMethod<any, any, infer R>
-	? R
-	: never;
+type MethodReturnType<M> =
+	M extends DirectMethod<any, any, infer R>
+		? R
+		: M extends FactoryMethod<any, any, infer R>
+			? R
+			: never;
 
 // 改进结构体实例类型，添加方法声明
 type StructInstance<
 	T extends StructDefinition,
-	M extends MethodMap<StructValue<T>> = Record<string, any>
+	M extends MethodMap<StructValue<T>> = Record<string, any>,
 > = StructValue<T> & {
 	[K in keyof M]: M[K] extends DirectMethod<StructValue<T>, infer Args, infer R>
 		? (...args: Args) => R
 		: M[K] extends FactoryMethod<StructValue<T>, infer Args, infer R>
-		? (...args: Args) => R
-		: never;
+			? (...args: Args) => R
+			: never;
 } & {
 	callMethod<K extends keyof M>(
 		methodName: K,
@@ -72,8 +73,8 @@ type StructInstance<
 			M[K] extends DirectMethod<StructValue<T>, infer Args, any>
 				? (...args: Args) => any
 				: M[K] extends FactoryMethod<StructValue<T>, infer Args, any>
-				? (...args: Args) => any
-				: never
+					? (...args: Args) => any
+					: never
 		>
 	): MethodReturnType<M[K]>;
 };
@@ -85,19 +86,23 @@ const structMethodMap = new WeakMap<object, Record<string, any>>();
 const currentScopeImplementations: Record<string, any>[] = [];
 type StructNew<
 	T extends StructDefinition,
-	M extends MethodMap<StructValue<T>> = Record<string, never>
+	M extends MethodMap<StructValue<T>> = Record<string, never>,
 > = (init: Partial<StructValue<T>>) => StructInstance<T, M>;
 // 修改 StructType 定义
 type StructType<
 	T extends StructDefinition,
-	M extends MethodMap<StructValue<T>> = Record<string, never>
+	M extends MethodMap<StructValue<T>> = Record<string, never>,
 > = {
 	new: StructNew<T, M>;
 	prototype: StructValue<T>;
 };
 
 class StructClass<T extends StructDefinition> {
-	constructor(init: Partial<StructValue<T>>, definition: T, private structType?: object) {
+	constructor(
+		init: Partial<StructValue<T>>,
+		definition: T,
+		private structType?: object,
+	) {
 		for (const key in definition) {
 			if (init !== null && Object.prototype.hasOwnProperty.call(init, key)) {
 				(this as any)[key] = init[key];
@@ -216,14 +221,18 @@ class StructClass<T extends StructDefinition> {
 	}
 }
 export function Struct<T extends StructDefinition>(
-	definition: T
+	definition: T,
 ): StructType<T> {
 	// 定义 new 方法，用 struct 自身作为类型标识（WeakMap key）
 	const structType = {} as object;
 	const structInstance = {
 		["$KAIA_TYPE$"]: "Struct",
 		new: (init: Partial<StructValue<T>>) =>
-			new StructClass(init, definition, structType) as unknown as StructInstance<T>,
+			new StructClass(
+				init,
+				definition,
+				structType,
+			) as unknown as StructInstance<T>,
 		prototype: StructClass.prototype,
 	};
 	// 让 WithStruct 能通过 struct 找到 structType 对应的方法
@@ -233,8 +242,8 @@ export function Struct<T extends StructDefinition>(
 
 export function Impl<
 	T extends StructDefinition,
-	M extends MethodMap<StructValue<T>> & { onNew?: OnNew<StructValue<T>> }
->(struct: StructType<T>, methods: M) {
+	M extends MethodMap<StructValue<T>> & { onNew?: OnNew<StructValue<T>> },
+>(struct: StructType<T>, methods: M): { struct: StructType<T>; methods: M } {
 	type Self = StructValue<T>;
 	const typedMethods = Object.fromEntries(
 		Object.entries(methods).map(([key, method]) => [
@@ -243,7 +252,7 @@ export function Impl<
 				? (self: Self, ...args: any[]) =>
 						(method as DirectMethod<Self>)(self, ...args)
 				: method,
-		])
+		]),
 	) as M;
 
 	return { struct, methods: typedMethods };
@@ -254,7 +263,7 @@ function detectMethodConflicts<T extends StructDefinition>(
 	implementations: Array<{
 		struct: StructType<T>;
 		methods: MethodMap<StructValue<T>>;
-	}>
+	}>,
 ): string[] {
 	const conflicts: string[] = [];
 	const methodSources = new Map<string, number>();
@@ -277,13 +286,13 @@ export function FuncBox<
 	T extends StructDefinition,
 	M1 extends MethodMap<StructValue<T>>,
 	M2 extends MethodMap<StructValue<T>>,
-	R = void
+	R = void,
 >(
 	implementations: [
 		{ struct: StructType<T>; methods: M1 },
-		{ struct: StructType<T>; methods: M2 }
+		{ struct: StructType<T>; methods: M2 },
 	],
-	callback: (As: (self: StructInstance<T>) => StructInstance<T, M1 & M2>) => R
+	callback: (As: (self: StructInstance<T>) => StructInstance<T, M1 & M2>) => R,
 ): R {
 	// 检测方法冲突但不立即抛出错误
 	const conflicts = detectMethodConflicts(implementations);
@@ -292,8 +301,8 @@ export function FuncBox<
 	if (conflicts.length > 0) {
 		console.warn(
 			`Warning: Method implementation conflict detected. The following methods have multiple implementations: ${conflicts.join(
-				", "
-			)}. Using last implementation.`
+				", ",
+			)}. Using last implementation.`,
 		);
 	}
 
@@ -311,7 +320,7 @@ export function FuncBox<
 		return callback((self) => {
 			// 创建代理对象
 			const proxy = Object.create(
-				Object.getPrototypeOf(self)
+				Object.getPrototypeOf(self),
 			) as StructInstance<T, M1 & M2>;
 
 			// 复制现有属性
@@ -353,9 +362,9 @@ export function MultiFuncBox<T extends MultiStructImpl[], R = void>(
 			self: T[K] extends { struct: StructType<infer D> }
 				? StructInstance<D>
 				: never,
-			index: K
-		) => StructInstanceMap<T>[K]
-	) => R
+			index: K,
+		) => StructInstanceMap<T>[K],
+	) => R,
 ): R {
 	// 为每个结构体分别检查方法冲突
 	const structMethodMap = new Map<StructType<any>, string[]>();
@@ -372,7 +381,7 @@ export function MultiFuncBox<T extends MultiStructImpl[], R = void>(
 			.map(([_, conflicts]) => conflicts.join(", "))
 			.join("; ");
 		console.warn(
-			`Warning: Method conflicts detected: ${errorMessages}. Using last implementation.`
+			`Warning: Method conflicts detected: ${errorMessages}. Using last implementation.`,
 		);
 	}
 
@@ -417,7 +426,7 @@ export function MultiFuncBox<T extends MultiStructImpl[], R = void>(
 
 export function WithStruct<
 	T extends StructDefinition,
-	M extends MethodMap<StructValue<T>> & { onNew?: OnNew<StructValue<T>> }
+	M extends MethodMap<StructValue<T>> & { onNew?: OnNew<StructValue<T>> },
 >(definition: T, methods: M): StructType<T, M> {
 	const struct = Struct(definition);
 
